@@ -1,0 +1,162 @@
+@font-face {
+  font-family: 'Product Sans';
+  src: url('../assets/fonts/product_sans_medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Roboto Medium';
+  src: url('../assets/fonts/roboto_medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Proxima Nova';
+  src: url('../assets/fonts/proxima_nova_bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'YTSans';
+  src: url('../assets/fonts/ytsans_medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+}
+
+:root {
+  --color-accent: #f04e5c;
+  --color-accent-alpha-10: rgba(240, 78, 92, 0.1);
+  --color-accent-alpha-20: rgba(240, 78, 92, 0.2);
+  --color-accent-alpha-50: rgba(240, 78, 92, 0.5);
+  --color-accent-alpha-70: rgba(240, 78, 92, 0.7);
+
+  --color-screen-bg: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-surface-raised: #f2f2f2;
+
+  --color-primary-text: rgba(0, 0, 0, 0.87);
+  --color-secondary-text: rgba(0, 0, 0, 0.54);
+  --color-tertiary-text: rgba(0, 0, 0, 0.38);
+  --color-hint-text: rgba(0, 0, 0, 0.24);
+
+  --color-icon-tint: rgba(0, 0, 0, 0.54);
+  --color-icon-alt-tint: rgba(0, 0, 0, 0.38);
+
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-separator: rgba(0, 0, 0, 0.05);
+  --color-ripple: rgba(0, 0, 0, 0.12);
+
+  --color-bottom-nav-bg: #ffffff;
+  --color-bottom-nav-bg-alpha: rgba(255, 255, 255, 0.9);
+  --color-bottom-nav-icon: #757575;
+  --color-bottom-nav-icon-active: #f04e6c;
+  --color-bottom-nav-label: #757575;
+  --color-bottom-nav-label-active: #f04e6c;
+  --color-bottom-nav-indicator: #ffdad7;
+
+  --color-search-bar-bg: #f5f5f5;
+  --color-card-bg: #ffffff;
+
+  --color-shimmer-base: #f5f5f5;
+  --color-shimmer-highlight: #eeeeee;
+
+  --color-green: #73c978;
+  --color-blue: #6979ce;
+  --color-yellow: #ffd468;
+  --color-red: #ff605b;
+  --color-purple: #c373c9;
+
+  --color-badge-bg: #f04e5c;
+  --color-fab-bg: #ffdad7;
+
+  --color-button-primary: #f04e5c;
+  --color-button-primary-text: #ffffff;
+
+  --color-status-bubble: rgba(0, 0, 0, 0.45);
+
+  --release-card-min-width: 124px;
+  --release-card-poster-height: 162px;
+  --release-card-padding-top: 12px;
+  --release-card-padding-bottom: 4px;
+  --release-card-padding-start: 8px;
+  --release-card-padding-end: 8px;
+  --release-card-title-size: 13px;
+  --release-card-text-size: 12px;
+  --release-card-corner-radius: 16px;
+
+  --release-poster-width-regular: 104px;
+  --release-poster-height-regular: 156px;
+  --release-poster-corner-regular: 16px;
+
+  --section-header-height: 56px;
+  --section-header-font-size: 18px;
+  --section-padding-horizontal: 16px;
+
+  --toolbar-height: 56px;
+  --search-bar-height: 48px;
+
+  --bottom-nav-height: 56px;
+
+  --font-body: 'Roboto', 'Roboto Medium', -apple-system, sans-serif;
+  --font-display: 'YTSans', 'Product Sans', 'Roboto Medium', sans-serif;
+  --font-medium: 'Roboto Medium', 'Roboto', sans-serif;
+
+  --focus-ring-color: rgba(240, 78, 92, 0.6);
+  --focus-ring-width: 3px;
+  --focus-scale: 1.05;
+  --focus-transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  --color-accent: #e0e0e0;
+  --color-accent-alpha-10: rgba(224, 224, 224, 0.1);
+  --color-accent-alpha-20: rgba(224, 224, 224, 0.2);
+  --color-accent-alpha-50: rgba(224, 224, 224, 0.5);
+  --color-accent-alpha-70: rgba(224, 224, 224, 0.7);
+
+  --color-screen-bg: #121212;
+  --color-surface: #252525;
+  --color-surface-raised: #2c2c2c;
+
+  --color-primary-text: rgba(255, 255, 255, 0.87);
+  --color-secondary-text: rgba(255, 255, 255, 0.7);
+  --color-tertiary-text: rgba(255, 255, 255, 0.38);
+  --color-hint-text: rgba(255, 255, 255, 0.24);
+
+  --color-icon-tint: rgba(255, 255, 255, 0.7);
+  --color-icon-alt-tint: rgba(255, 255, 255, 0.38);
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-separator: rgba(255, 255, 255, 0.05);
+  --color-ripple: rgba(255, 255, 255, 0.2);
+
+  --color-bottom-nav-bg: #252525;
+  --color-bottom-nav-bg-alpha: rgba(37, 37, 37, 0.9);
+  --color-bottom-nav-icon: #616161;
+  --color-bottom-nav-icon-active: #e8def7;
+  --color-bottom-nav-label: #616161;
+  --color-bottom-nav-label-active: #e8def7;
+  --color-bottom-nav-indicator: #494458;
+
+  --color-search-bar-bg: #252525;
+  --color-card-bg: #1e1e1e;
+
+  --color-shimmer-base: #212121;
+  --color-shimmer-highlight: #292929;
+
+  --color-green: #70a873;
+  --color-blue: #6974ad;
+  --color-yellow: #db9d39;
+  --color-red: #c24f4e;
+  --color-purple: #a770ac;
+
+  --color-badge-bg: #494458;
+  --color-fab-bg: #494458;
+
+  --color-button-primary: #f04e5c;
+  --color-button-primary-text: #ffffff;
+
+  --color-status-bubble: rgba(0, 0, 0, 0.65);
+
+  --focus-ring-color: rgba(232, 222, 247, 0.6);
+}
