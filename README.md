@@ -6,34 +6,39 @@
 
 ---
 
-## Текущий статус: ~30% готово
+## Текущий статус: ~75% готово
 
 ### Что реализовано
 
 | Компонент | Файл | Описание |
 |-----------|------|----------|
-| **Авторизация** | `src/screens/login.js` | Экран входа (логин/пароль), интеграция с `auth/signIn` API, сохранение токена в localStorage |
-| **Главный экран** | `src/screens/home.js` | Горизонтальные ряды карточек: "Интересное", "Рекомендации", "Смотрят сейчас", "Обсуждаемое". Skeleton-загрузка. |
-| **Детали аниме** | `src/screens/details.js` | Постер с blur-фоном, название (RU/EN), бейджи (год, возраст, статус), описание, жанры, список эпизодов |
-| **Нижняя навигация** | `src/components/bottom-nav.js` | 5 вкладок: Главная, Обзор, Закладки, Лента, Профиль. Работает только "Главная", остальные — заглушки |
+| **Авторизация** | `src/screens/login.js` | Экран входа: вкладки Пароль/QR-код. QR-логин через телефон (auth-helper.html), PIN-код |
+| **Главный экран** | `src/screens/home.js` | Горизонтальные ряды карточек: "Интересное", "Рекомендации", "Смотрят сейчас", "Обсуждаемое". Skeleton-загрузка. Клик на поиск-бар открывает поиск |
+| **Детали аниме** | `src/screens/details.js` | Постер с blur-фоном, название (RU/EN), бейджи (год, возраст, статус), описание, жанры, список эпизодов. Клик на эпизод или "Смотреть" открывает плеер |
+| **Поиск** | `src/screens/search.js` | Поиск с debounce (400мс), результаты в виде карточек с постером/названием/мета/жанрами |
+| **Видеоплеер** | `src/screens/player.js` | HTML5 video с overlay-управлением, TV remote key handling, авто-переход к следующему эпизоду |
+| **Закладки** | `src/screens/bookmarks.js` | 5 вкладок: Смотрю, В планах, Просмотрено, Отложено, Брошено. Сетка карточек |
+| **Профиль** | `src/screens/profile.js` | Аватар, статистика, переключение темы (тёмная/светлая), выход из аккаунта |
+| **Нижняя навигация** | `src/components/bottom-nav.js` | 5 вкладок, все подключены: Главная, Обзор (→поиск), Закладки, Лента, Профиль |
 | **D-pad навигация** | `src/navigation/focus.js` | Управление пультом ТВ: стрелки (перемещение фокуса), Enter (выбор), Back/Backspace (назад). Автоскролл к фокусу |
+| **Отладка** | `src/services/debug.js` | Панель логов (уровни: info/api/warn/error/nav), вкл. клавишей 'i' или Green на пульте |
+| **QR-генератор** | `src/lib/qrcode.js` | Генерация QR-кодов без внешних зависимостей (для логина) |
 | **API-клиент** | `src/api/client.js` | XHR-обёртка с Promise, поддержка GET/POST, form-data, JSON, таймауты 15с |
 | **API авторизации** | `src/api/auth.js` | `auth/signIn` — вход по логину/паролю |
 | **API каталога** | `src/api/discover.js` | `discover/interesting`, `discover/recommendations`, `discover/watching`, `discover/discussing` |
 | **API релизов** | `src/api/release.js` | `release/{id}` — детали, `release/{id}/episode` — эпизоды, `release/{id}/source` — источники |
+| **API поиска** | `src/api/search.js` | `search/releases/{page}` — поиск по названию |
+| **API профиля** | `src/api/profile.js` | `profile/{id}`, `profile/list/{status}/{page}`, добавление/удаление из списков |
 | **Хранилище** | `src/services/storage.js` | localStorage-обёртка: токен, профиль, тема |
 | **Темы** | `styles/theme.css` | Полные light/dark палитры с CSS-переменными. По умолчанию dark |
-| **Стили** | `styles/main.css` | Вся вёрстка: логин, карточки, детали, навигация, скелетоны, фокус-кольца |
+| **Стили** | `styles/main.css` | Вся вёрстка: логин, поиск, плеер, закладки, профиль, карточки, детали, навигация, скелетоны, фокус-кольца |
 
-### Что НЕ реализовано (~70%)
+### Что НЕ реализовано (~25%)
 
 | Приоритет | Фича | Описание |
 |-----------|-------|----------|
-| **P0** | Видеоплеер | Воспроизведение серий (HLS/MP4). Управление пультом: play/pause, перемотка, громкость. Tizen AVPlay API или HTML5 video |
-| **P0** | Поиск | Экран поиска с виртуальной клавиатурой для ТВ. API: `search/releases/{page}` (POST, body: `{searchText, ...}`) |
-| **P1** | Закладки | Списки: "Смотрю", "Запланировано", "Просмотрено", "Отложено", "Брошено". API: `profile/list/...` |
-| **P1** | Профиль | Экран профиля: аватар, статистика, настройки, выход из аккаунта |
 | **P1** | История просмотра | Запоминание позиции воспроизведения, отметка просмотренных серий |
+| **P1** | Лента | Экран ленты: новые серии, обновления избранных релизов |
 | **P2** | Кэширование | Оффлайн-данные, кэш постеров и API-ответов |
 | **P2** | Обработка ошибок | Потеря сети, таймауты, ретраи, user-friendly сообщения |
 | **P2** | Упаковка .wgt | Финальный Tizen-пакет, подпись, установка на реальное устройство |
@@ -48,23 +53,33 @@
 anixart-tizenOS/
 ├── index.html              # Точка входа, подключение всех скриптов
 ├── config.xml              # Tizen Widget конфиг (привилегии, разрешения)
+├── auth-helper.html        # Страница-помощник для QR-логина (открывается на телефоне)
 ├── package.json            # npm-скрипты (serve, package)
 ├── src/
 │   ├── app.js              # Роутер: history-стек, showScreen(), goBack()
+│   ├── lib/
+│   │   └── qrcode.js       # QR-генератор (без внешних зависимостей)
 │   ├── api/
 │   │   ├── client.js       # ApiClient — базовый HTTP-клиент (XHR + Promise)
 │   │   ├── auth.js         # AuthApi — авторизация
 │   │   ├── discover.js     # DiscoverApi — главная лента
-│   │   └── release.js      # ReleaseApi — детали релиза, эпизоды, источники
+│   │   ├── release.js      # ReleaseApi — детали релиза, эпизоды, источники
+│   │   ├── search.js       # SearchApi — поиск по названию
+│   │   └── profile.js      # ProfileApi — профиль, закладки (списки)
 │   ├── screens/
-│   │   ├── login.js        # LoginScreen — вход в аккаунт
+│   │   ├── login.js        # LoginScreen — вход (пароль + QR-код)
 │   │   ├── home.js         # HomeScreen — главная с рядами карточек
-│   │   └── details.js      # DetailsScreen — страница аниме
+│   │   ├── details.js      # DetailsScreen — страница аниме
+│   │   ├── search.js       # SearchScreen — поиск аниме
+│   │   ├── player.js       # PlayerScreen — видеоплеер
+│   │   ├── bookmarks.js    # BookmarksScreen — закладки (5 категорий)
+│   │   └── profile.js      # ProfileScreen — профиль, тема, выход
 │   ├── components/
 │   │   └── bottom-nav.js   # BottomNav — нижняя панель навигации
 │   ├── navigation/
 │   │   └── focus.js        # FocusManager — D-pad навигация для ТВ
 │   └── services/
+│       ├── debug.js        # Debug — панель логов (info/api/warn/error/nav)
 │       └── storage.js      # Storage — localStorage обёртка
 ├── styles/
 │   ├── theme.css           # CSS-переменные, шрифты, light/dark тема
@@ -105,17 +120,20 @@ Base URL: `https://api-s.anixsekai.com/`
 | POST | `release/{id}/source` | `?token=...` | Источники видео. Ответ: `{content: [{id, name, ...}]}` |
 | POST | `release/{id}/episode` | `?token=...&sourceId=...` | Список эпизодов. Ответ: `{content: [{position, name, ...}]}` |
 
+### Реализованные дополнительные эндпоинты
+
+| Метод | Endpoint | Файл | Описание |
+|-------|----------|------|----------|
+| POST | `search/releases/{page}` | `search.js` | Поиск. Body: `{searchText: "query"}` |
+| POST | `profile/{id}` | `profile.js` | Профиль пользователя |
+| POST | `profile/list/{status}/{page}` | `profile.js` | Закладки по статусу (1-5) |
+| POST | `profile/list/add` | `profile.js` | Добавить в список. Body: `{release_id, status}` |
+| POST | `profile/list/delete` | `profile.js` | Удалить из списка. Body: `{release_id}` |
+
 ### Эндпоинты для реализации
 
 | Метод | Endpoint | Описание |
 |-------|----------|----------|
-| POST | `search/releases/{page}` | Поиск. Body: `{searchText: "query"}` |
-| POST | `profile/{id}` | Профиль пользователя |
-| POST | `profile/list/watching/{page}` | Закладки: смотрю |
-| POST | `profile/list/planned/{page}` | Закладки: запланировано |
-| POST | `profile/list/watched/{page}` | Закладки: просмотрено |
-| POST | `profile/list/delayed/{page}` | Закладки: отложено |
-| POST | `profile/list/dropped/{page}` | Закладки: брошено |
 | POST | `release/{id}/episode/link` | Получение прямой ссылки на видеофайл |
 
 ### Структура данных Release
@@ -206,25 +224,20 @@ npm run serve     # http-server на порту 8080
 
 ## Рекомендации по реализации оставшегося
 
-### Видеоплеер (P0)
+### Лента (P1)
 
-Создать `src/screens/player.js`. Два варианта:
-1. **HTML5 `<video>`** — проще, работает с MP4
-2. **Tizen AVPlay API** — нативный плеер Samsung, лучше для HLS, DRM
+Создать `src/screens/feed.js`. Показывать новые серии избранных релизов. API: может использовать `discover/watching` или аналогичный эндпоинт для ленты обновлений.
 
-Минимум: получить ссылку через `release/{id}/episode/link`, создать `<video>` с controls, обработать клавиши пульта (play/pause/seek).
+### История просмотра (P1)
 
-Добавить экран в роутер (`App.showScreen('player', {url, releaseId, episode})`).
+Сохранять позицию воспроизведения в localStorage: `{releaseId: {episodeIndex, currentTime}}`. При открытии плеера — восстанавливать позицию. На карточке закладки показывать прогресс.
 
-### Поиск (P0)
+### Видеоплеер — улучшения
 
-Создать `src/screens/search.js`. Нужна виртуальная ТВ-клавиатура (сетка букв с D-pad навигацией) или использование `<input>` с экранной клавиатурой Tizen.
-
-API: `POST search/releases/{page}` с body `{searchText: "..."}`.
-
-### Закладки (P1)
-
-Создать `src/screens/bookmarks.js`. Табы: Смотрю / Запланировано / Просмотрено / Отложено / Брошено. Переиспользовать `HomeScreen.createReleaseCard()`.
+Текущий плеер использует HTML5 `<video>`. Возможные доработки:
+- **Tizen AVPlay API** — нативный плеер Samsung для HLS/DRM
+- Выбор качества видео (если доступны несколько ссылок)
+- Субтитры
 
 ### Новый экран — чеклист
 
