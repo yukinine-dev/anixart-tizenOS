@@ -43,6 +43,18 @@ var App = {
       case 'details':
         DetailsScreen.render(params);
         break;
+      case 'search':
+        SearchScreen.render();
+        break;
+      case 'player':
+        PlayerScreen.render(params);
+        break;
+      case 'bookmarks':
+        BookmarksScreen.render();
+        break;
+      case 'profile':
+        ProfileScreen.render();
+        break;
     }
   },
 
@@ -61,6 +73,18 @@ var App = {
           break;
         case 'details':
           DetailsScreen.render(prev.params);
+          break;
+        case 'search':
+          SearchScreen.render();
+          break;
+        case 'player':
+          PlayerScreen.render(prev.params);
+          break;
+        case 'bookmarks':
+          BookmarksScreen.render();
+          break;
+        case 'profile':
+          ProfileScreen.render();
           break;
       }
     } else if (this.currentScreen !== 'home' && Storage.isLoggedIn()) {

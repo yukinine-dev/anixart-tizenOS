@@ -199,9 +199,12 @@ var DetailsScreen = {
     }, 200);
   },
 
+  loadedEpisodes: [],
+
   loadEpisodesList: function(releaseId) {
     var token = Storage.getToken();
     var container = document.getElementById('episodes-container');
+    var self = this;
 
     ReleaseApi.getSources(releaseId, token).then(function(response) {
       var sources = response.content || response || [];
@@ -211,6 +214,7 @@ var DetailsScreen = {
       return ReleaseApi.getEpisodes(releaseId, null, token);
     }).then(function(response) {
       var episodes = response.content || response || [];
+      self.loadedEpisodes = episodes;
       if (!container) return;
       container.innerHTML = '';
 
@@ -238,6 +242,12 @@ var DetailsScreen = {
         epName.textContent = ep.name || ('Эпизод ' + (ep.position != null ? ep.position : (i + 1)));
         epCard.appendChild(epName);
 
+        (function(idx) {
+          epCard.addEventListener('click', function() {
+            DetailsScreen.openPlayer(idx);
+          });
+        })(i);
+
         list.appendChild(epCard);
       }
 
@@ -250,10 +260,24 @@ var DetailsScreen = {
     });
   },
 
+  openPlayer: function(episodeIndex) {
+    var release = this.currentRelease;
+    if (!release || !this.loadedEpisodes.length) return;
+    App.showScreen('player', {
+      releaseTitle: release.title_ru || release.title || '',
+      episodes: this.loadedEpisodes,
+      episodeIndex: episodeIndex || 0
+    });
+  },
+
   loadEpisodes: function(releaseId) {
-    var section = document.getElementById('episodes-section');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+    if (this.loadedEpisodes && this.loadedEpisodes.length > 0) {
+      this.openPlayer(0);
+    } else {
+      var section = document.getElementById('episodes-section');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   }
 };

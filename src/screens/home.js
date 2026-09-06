@@ -45,6 +45,10 @@ var HomeScreen = {
     searchText.textContent = 'Поиск аниме';
     searchBar.appendChild(searchText);
 
+    searchBar.addEventListener('click', function() {
+      App.showScreen('search');
+    });
+
     toolbar.appendChild(searchBar);
 
     var actions = document.createElement('div');
