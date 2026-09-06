@@ -101,25 +101,31 @@ var LoginScreen = {
     button.textContent = 'Вход...';
     button.disabled = true;
 
+    if (typeof Debug !== 'undefined') Debug.log('info', 'Login attempt: ' + login);
+
     AuthApi.signIn(login, password).then(function(response) {
       button.textContent = 'Войти';
       button.disabled = false;
 
       if (response.status && response.status !== 0) {
+        if (typeof Debug !== 'undefined') Debug.log('error', 'Login failed: status=' + response.status);
         errorEl.textContent = AuthApi.getErrorMessage(response.status);
         errorEl.style.display = 'block';
         return;
       }
 
       if (response.profileToken && response.profileToken.token) {
+        if (typeof Debug !== 'undefined') Debug.log('info', 'Login success, tokenId=' + response.profileToken.id);
         App.showScreen('home');
       } else {
+        if (typeof Debug !== 'undefined') Debug.log('error', 'Login: no token in response');
         errorEl.textContent = 'Ошибка авторизации';
         errorEl.style.display = 'block';
       }
     }).catch(function(err) {
       button.textContent = 'Войти';
       button.disabled = false;
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Login network error', err);
       errorEl.textContent = 'Ошибка сети. Проверьте подключение.';
       errorEl.style.display = 'block';
     });

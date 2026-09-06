@@ -42,6 +42,18 @@ var FocusManager = {
       case 415: // Play
       case 10252: // Play/Pause (Tizen)
         break;
+      case 73: // 'i' key
+        if (typeof Debug !== 'undefined') {
+          e.preventDefault();
+          Debug.toggle();
+        }
+        break;
+      case 403: // Green button (Tizen remote)
+        if (typeof Debug !== 'undefined') {
+          e.preventDefault();
+          Debug.toggle();
+        }
+        break;
     }
   },
 

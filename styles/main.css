@@ -786,6 +786,180 @@ input {
   text-overflow: ellipsis;
 }
 
+/* ===== DEBUG PANEL ===== */
+
+.debug-panel {
+  position: fixed;
+  top: 0;
+  right: -520px;
+  width: 520px;
+  height: 100%;
+  background: rgba(10, 10, 10, 0.95);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.debug-panel.open {
+  right: 0;
+}
+
+.debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(30, 30, 30, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.debug-title {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.debug-filters {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.debug-filter-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.debug-filter-btn.active {
+  background: rgba(240, 78, 92, 0.3);
+  color: #f04e5c;
+}
+
+.debug-filter-btn.focused {
+  outline: 2px solid #f04e5c !important;
+  outline-offset: 1px;
+  transform: none;
+}
+
+.debug-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.debug-clear-btn,
+.debug-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.debug-clear-btn.focused,
+.debug-close-btn.focused {
+  outline: 2px solid #f04e5c !important;
+  outline-offset: 1px;
+  transform: none;
+}
+
+.debug-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+
+.debug-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.debug-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.debug-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.debug-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.debug-row-error {
+  background: rgba(255, 96, 91, 0.08);
+}
+
+.debug-time {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  flex-shrink: 0;
+  min-width: 56px;
+}
+
+.debug-level {
+  font-size: 11px;
+  font-weight: bold;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.debug-msg {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  word-break: break-all;
+  flex: 1;
+}
+
+.debug-data {
+  width: 100%;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  padding: 4px 0 4px 100px;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.debug-badge {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  background: #ff605b;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  font-family: 'Courier New', monospace;
+}
+
 /* ===== ERROR STATE ===== */
 
 .error-state {

@@ -5,13 +5,15 @@ var App = {
   init: function() {
     document.documentElement.setAttribute('data-theme', Storage.getTheme());
 
+    if (typeof Debug !== 'undefined') Debug.init();
     FocusManager.init();
 
     if (typeof tizen !== 'undefined') {
       try {
         tizen.tvinputdevice.registerKeyBatch([
           'MediaPlay', 'MediaPause', 'MediaPlayPause',
-          'MediaStop', 'MediaFastForward', 'MediaRewind'
+          'MediaStop', 'MediaFastForward', 'MediaRewind',
+          'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue'
         ]);
       } catch (e) {}
     }
@@ -24,6 +26,7 @@ var App = {
   },
 
   showScreen: function(name, params) {
+    if (typeof Debug !== 'undefined') Debug.logNav('screen', name + (params ? ' ' + JSON.stringify(params) : ''));
     if (this.currentScreen && this.currentScreen !== name) {
       this.history.push({ name: this.currentScreen, params: this.currentParams });
     }
@@ -44,6 +47,7 @@ var App = {
   },
 
   goBack: function() {
+    if (typeof Debug !== 'undefined') Debug.logNav('back', 'from ' + this.currentScreen);
     if (this.history.length > 0) {
       var prev = this.history.pop();
       this.currentScreen = prev.name;

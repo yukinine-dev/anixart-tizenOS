@@ -115,7 +115,10 @@ var HomeScreen = {
       );
     }
 
+    if (typeof Debug !== 'undefined') Debug.log('info', 'Home: loading data (' + promises.length + ' requests)');
+
     Promise.all(promises).then(function(results) {
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Home: data loaded, rendering sections');
       if (skeleton) skeleton.remove();
 
       var interesting = results[0];
@@ -164,6 +167,7 @@ var HomeScreen = {
       }, 100);
 
     }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Home: data load failed', err);
       if (skeleton) skeleton.remove();
       var errorEl = document.createElement('div');
       errorEl.className = 'error-state';

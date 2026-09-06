@@ -22,11 +22,15 @@ var DetailsScreen = {
     var token = Storage.getToken();
     var self = this;
 
+    if (typeof Debug !== 'undefined') Debug.log('info', 'Details: loading release ' + releaseId);
+
     ReleaseApi.getRelease(releaseId, token).then(function(response) {
       var release = response.release || response;
       self.currentRelease = release;
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Details: loaded "' + (release.title_ru || release.title || releaseId) + '"');
       self.renderRelease(release);
     }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Details: failed to load release ' + releaseId, err);
       var container = document.getElementById('app');
       container.innerHTML = '<div class="error-state">Ошибка загрузки</div>';
     });
@@ -239,6 +243,7 @@ var DetailsScreen = {
 
       container.appendChild(list);
     }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Episodes: failed to load for release ' + releaseId, err);
       if (container) {
         container.innerHTML = '<div class="episodes-empty">Ошибка загрузки эпизодов</div>';
       }
