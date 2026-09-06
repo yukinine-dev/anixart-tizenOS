@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anixart TV Login</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, system-ui, sans-serif;
+    background: #121212;
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+  .logo { font-size: 24px; font-weight: 700; color: #f04e5c; margin-bottom: 8px; }
+  .subtitle { color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 32px; }
+  .form { width: 100%; max-width: 360px; }
+  .field {
+    width: 100%;
+    height: 52px;
+    padding: 0 16px;
+    background: #252525;
+    border: 2px solid #333;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 16px;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+  }
+  .field:focus { border-color: #f04e5c; outline: none; }
+  .field::placeholder { color: rgba(255,255,255,0.3); }
+  .btn {
+    width: 100%;
+    height: 52px;
+    background: #f04e5c;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .btn:active { opacity: 0.8; }
+  .btn:disabled { opacity: 0.5; }
+  .error { color: #ff605b; font-size: 14px; text-align: center; margin-top: 12px; }
+  .result {
+    width: 100%;
+    max-width: 360px;
+    margin-top: 24px;
+    display: none;
+  }
+  .result.show { display: block; }
+  .result-label {
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 8px;
+  }
+  .token-box {
+    background: #252525;
+    border: 2px solid #333;
+    border-radius: 12px;
+    padding: 16px;
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #73c978;
+    user-select: all;
+    -webkit-user-select: all;
+  }
+  .copy-btn {
+    width: 100%;
+    height: 44px;
+    background: #252525;
+    color: #ffffff;
+    border: 2px solid #444;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+  .copy-btn.copied { border-color: #73c978; color: #73c978; }
+  .hint {
+    text-align: center;
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    margin-top: 16px;
+    line-height: 1.5;
+  }
+  .pin-section {
+    width: 100%;
+    max-width: 360px;
+    margin-top: 20px;
+    display: none;
+  }
+  .pin-section.show { display: block; }
+  .pin-label {
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 12px;
+  }
+  .pin-code {
+    text-align: center;
+    font-size: 48px;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 8px;
+    color: #ffffff;
+    background: #252525;
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .pin-hint {
+    text-align: center;
+    color: #73c978;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo">Anixart</div>
+<div class="subtitle">Login for Tizen TV</div>
+
+<div class="form" id="form">
+  <input class="field" type="text" id="login" placeholder="Email or username" autocomplete="username">
+  <input class="field" type="password" id="password" placeholder="Password" autocomplete="current-password">
+  <button class="btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+  <div class="error" id="error"></div>
+</div>
+
+<div class="pin-section" id="pinSection">
+  <div class="pin-label">Enter this code on your TV</div>
+  <div class="pin-code" id="pinCode"></div>
+  <div class="pin-hint">TV login screen > "QR Code" tab > enter the code</div>
+</div>
+
+<div class="result" id="result">
+  <div class="result-label">Or enter the full token manually:</div>
+  <div class="token-box" id="tokenBox"></div>
+  <button class="copy-btn" id="copyBtn" onclick="copyToken()">Copy Token</button>
+</div>
+
+<script>
+var savedToken = '';
+
+function doLogin() {
+  var login = document.getElementById('login').value.trim();
+  var pass = document.getElementById('password').value;
+  var err = document.getElementById('error');
+  var btn = document.getElementById('loginBtn');
+
+  if (!login || !pass) {
+    err.textContent = 'Enter login and password';
+    return;
+  }
+
+  err.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', 'https://api-s.anixsekai.com/auth/signIn');
+  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+  xhr.timeout = 15000;
+
+  xhr.onload = function() {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+    try {
+      var r = JSON.parse(xhr.responseText);
+      if (r.profileToken && r.profileToken.token) {
+        savedToken = r.profileToken.token;
+        showResult(savedToken);
+      } else {
+        var msgs = { 2: 'Invalid email or username', 3: 'Wrong password' };
+        err.textContent = msgs[r.status] || ('Error: status ' + (r.status || 'unknown'));
+      }
+    } catch (e) {
+      err.textContent = 'Invalid server response';
+    }
+  };
+
+  xhr.onerror = function() {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+    err.textContent = 'Network error';
+  };
+
+  xhr.ontimeout = function() {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+    err.textContent = 'Connection timeout';
+  };
+
+  xhr.send('login=' + encodeURIComponent(login) + '&password=' + encodeURIComponent(pass));
+}
+
+function showResult(token) {
+  document.getElementById('form').style.display = 'none';
+
+  var pin = generatePin(token);
+  document.getElementById('pinCode').textContent = pin;
+  document.getElementById('pinSection').classList.add('show');
+
+  document.getElementById('tokenBox').textContent = token;
+  document.getElementById('result').classList.add('show');
+}
+
+function generatePin(token) {
+  var hash = 0;
+  for (var i = 0; i < token.length; i++) {
+    hash = ((hash << 5) - hash + token.charCodeAt(i)) | 0;
+  }
+  var num = Math.abs(hash) % 1000000;
+  var s = String(num);
+  while (s.length < 6) s = '0' + s;
+  return s;
+}
+
+function copyToken() {
+  var btn = document.getElementById('copyBtn');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(savedToken).then(function() {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = savedToken;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+  }
+  setTimeout(function() {
+    btn.textContent = 'Copy Token';
+    btn.classList.remove('copied');
+  }, 2000);
+}
+</script>
+</body>
+</html>
