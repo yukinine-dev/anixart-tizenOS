@@ -128,8 +128,12 @@ var DetailsScreen = {
 
     var favBtn = document.createElement('button');
     favBtn.className = 'details-action-btn';
+    favBtn.id = 'details-fav-btn';
     favBtn.setAttribute('data-focusable', 'true');
     favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+    favBtn.addEventListener('click', function() {
+      DetailsScreen.showBookmarkPicker(release);
+    });
     actions.appendChild(favBtn);
 
     var shareBtn = document.createElement('button');
@@ -264,6 +268,7 @@ var DetailsScreen = {
     var release = this.currentRelease;
     if (!release || !this.loadedEpisodes.length) return;
     App.showScreen('player', {
+      releaseId: release.id,
       releaseTitle: release.title_ru || release.title || '',
       episodes: this.loadedEpisodes,
       episodeIndex: episodeIndex || 0
@@ -279,5 +284,107 @@ var DetailsScreen = {
         section.scrollIntoView({ behavior: 'smooth' });
       }
     }
+  },
+
+  showBookmarkPicker: function(release) {
+    var existing = document.getElementById('bookmark-picker');
+    if (existing) { existing.remove(); return; }
+
+    var picker = document.createElement('div');
+    picker.className = 'bookmark-picker';
+    picker.id = 'bookmark-picker';
+
+    var lists = [
+      { status: 1, label: 'Смотрю' },
+      { status: 2, label: 'В планах' },
+      { status: 3, label: 'Просмотрено' },
+      { status: 4, label: 'Отложено' },
+      { status: 5, label: 'Брошено' }
+    ];
+
+    for (var i = 0; i < lists.length; i++) {
+      var item = lists[i];
+      var btn = document.createElement('button');
+      btn.className = 'bookmark-picker-item';
+      btn.setAttribute('data-focusable', 'true');
+      btn.textContent = item.label;
+
+      if (release.profile_list_status === item.status) {
+        btn.classList.add('active');
+      }
+
+      (function(status) {
+        btn.addEventListener('click', function() {
+          DetailsScreen.addToList(release, status);
+        });
+      })(item.status);
+
+      picker.appendChild(btn);
+    }
+
+    if (release.profile_list_status) {
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'bookmark-picker-item bookmark-picker-remove';
+      removeBtn.setAttribute('data-focusable', 'true');
+      removeBtn.textContent = 'Удалить из списка';
+      removeBtn.addEventListener('click', function() {
+        DetailsScreen.removeFromList(release);
+      });
+      picker.appendChild(removeBtn);
+    }
+
+    var container = document.getElementById('app');
+    container.appendChild(picker);
+
+    setTimeout(function() {
+      var first = picker.querySelector('[data-focusable]');
+      if (first) FocusManager.setFocus(first);
+    }, 50);
+
+    picker.addEventListener('click', function(e) {
+      if (e.target === picker) picker.remove();
+    });
+  },
+
+  addToList: function(release, status) {
+    var token = Storage.getToken();
+    if (!token || typeof ProfileApi === 'undefined') return;
+
+    var statusNames = { 1: 'Смотрю', 2: 'В планах', 3: 'Просмотрено', 4: 'Отложено', 5: 'Брошено' };
+
+    ProfileApi.addToList(release.id, status, token).then(function() {
+      release.profile_list_status = status;
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Bookmark: added to ' + statusNames[status]);
+
+      var favBtn = document.getElementById('details-fav-btn');
+      if (favBtn) {
+        favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg><span>' + statusNames[status] + '</span>';
+      }
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Bookmark: add failed', err);
+    });
+
+    var picker = document.getElementById('bookmark-picker');
+    if (picker) picker.remove();
+  },
+
+  removeFromList: function(release) {
+    var token = Storage.getToken();
+    if (!token || typeof ProfileApi === 'undefined') return;
+
+    ProfileApi.removeFromList(release.id, token).then(function() {
+      release.profile_list_status = null;
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Bookmark: removed');
+
+      var favBtn = document.getElementById('details-fav-btn');
+      if (favBtn) {
+        favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+      }
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Bookmark: remove failed', err);
+    });
+
+    var picker = document.getElementById('bookmark-picker');
+    if (picker) picker.remove();
   }
 };

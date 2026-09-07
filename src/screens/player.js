@@ -8,14 +8,25 @@ var PlayerScreen = {
   seeking: false,
   seekStep: 10,
 
+  releaseId: null,
+  saveInterval: null,
+
   render: function(params) {
     var container = document.getElementById('app');
     container.innerHTML = '';
     container.className = 'screen-player';
 
+    this.releaseId = params.releaseId || null;
     this.releaseTitle = params.releaseTitle || '';
     this.episodes = params.episodes || [];
     this.currentEpisodeIndex = params.episodeIndex || 0;
+
+    if (this.releaseId && typeof WatchHistory !== 'undefined') {
+      var saved = WatchHistory.get(this.releaseId);
+      if (saved && params.episodeIndex == null) {
+        this.currentEpisodeIndex = saved.episodeIndex || 0;
+      }
+    }
 
     var playerWrap = document.createElement('div');
     playerWrap.className = 'player-wrap';
@@ -155,10 +166,24 @@ var PlayerScreen = {
     video.addEventListener('loadedmetadata', function() {
       var dur = document.getElementById('player-time-duration');
       if (dur) dur.textContent = self.formatTime(video.duration);
+
+      if (self.releaseId && typeof WatchHistory !== 'undefined') {
+        var saved = WatchHistory.get(self.releaseId);
+        if (saved && saved.episodeIndex === self.currentEpisodeIndex && saved.currentTime > 5) {
+          video.currentTime = saved.currentTime;
+        }
+      }
     });
 
-    video.addEventListener('play', function() { self.updatePlayBtn(true); });
-    video.addEventListener('pause', function() { self.updatePlayBtn(false); });
+    video.addEventListener('play', function() {
+      self.updatePlayBtn(true);
+      self.startSaveInterval();
+    });
+    video.addEventListener('pause', function() {
+      self.updatePlayBtn(false);
+      self.saveProgress();
+      self.stopSaveInterval();
+    });
 
     video.addEventListener('ended', function() {
       if (self.currentEpisodeIndex < self.episodes.length - 1) {
@@ -274,7 +299,30 @@ var PlayerScreen = {
     return false;
   },
 
+  saveProgress: function() {
+    if (!this.releaseId || !this.videoEl || typeof WatchHistory === 'undefined') return;
+    if (!this.videoEl.duration || this.videoEl.duration < 1) return;
+    WatchHistory.save(this.releaseId, this.currentEpisodeIndex, this.videoEl.currentTime, this.videoEl.duration);
+  },
+
+  startSaveInterval: function() {
+    this.stopSaveInterval();
+    var self = this;
+    this.saveInterval = setInterval(function() {
+      self.saveProgress();
+    }, 10000);
+  },
+
+  stopSaveInterval: function() {
+    if (this.saveInterval) {
+      clearInterval(this.saveInterval);
+      this.saveInterval = null;
+    }
+  },
+
   destroy: function() {
+    this.saveProgress();
+    this.stopSaveInterval();
     if (this.videoEl) {
       this.videoEl.pause();
       this.videoEl.src = '';

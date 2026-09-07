@@ -27,6 +27,11 @@ var App = {
 
   showScreen: function(name, params) {
     if (typeof Debug !== 'undefined') Debug.logNav('screen', name + (params ? ' ' + JSON.stringify(params) : ''));
+
+    if (this.currentScreen === 'player' && name !== 'player') {
+      PlayerScreen.destroy();
+    }
+
     if (this.currentScreen && this.currentScreen !== name) {
       this.history.push({ name: this.currentScreen, params: this.currentParams });
     }
@@ -52,6 +57,9 @@ var App = {
       case 'bookmarks':
         BookmarksScreen.render();
         break;
+      case 'feed':
+        FeedScreen.render();
+        break;
       case 'profile':
         ProfileScreen.render();
         break;
@@ -60,6 +68,11 @@ var App = {
 
   goBack: function() {
     if (typeof Debug !== 'undefined') Debug.logNav('back', 'from ' + this.currentScreen);
+
+    if (this.currentScreen === 'player') {
+      PlayerScreen.destroy();
+    }
+
     if (this.history.length > 0) {
       var prev = this.history.pop();
       this.currentScreen = prev.name;
@@ -82,6 +95,9 @@ var App = {
           break;
         case 'bookmarks':
           BookmarksScreen.render();
+          break;
+        case 'feed':
+          FeedScreen.render();
           break;
         case 'profile':
           ProfileScreen.render();

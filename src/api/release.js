@@ -16,5 +16,14 @@ var ReleaseApi = {
     return ApiClient.post('release/' + releaseId + '/source', {
       token: token
     });
+  },
+
+  getEpisodeLinks: function(releaseId, episodeId, sourceId, token) {
+    var params = {};
+    if (sourceId) params.sourceId = sourceId;
+    return ApiClient.post('release/' + releaseId + '/episode/' + episodeId + '/link', {
+      token: token,
+      queryParams: params
+    });
   }
 };

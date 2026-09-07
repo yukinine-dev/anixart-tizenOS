@@ -55,6 +55,9 @@ var BottomNav = {
       case 'bookmarks':
         App.showScreen('bookmarks');
         break;
+      case 'feed':
+        App.showScreen('feed');
+        break;
       case 'profile':
         App.showScreen('profile');
         break;
