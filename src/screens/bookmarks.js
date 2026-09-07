@@ -56,6 +56,9 @@ var BookmarksScreen = {
     var content = document.createElement('div');
     content.className = 'bookmarks-content';
     content.id = 'bookmarks-content';
+    content.addEventListener('scroll', function() {
+      BookmarksScreen.onScroll(content);
+    });
     container.appendChild(content);
 
     var bottomNav = BottomNav.render('bookmarks');
@@ -115,6 +118,14 @@ var BookmarksScreen = {
       if (this.tabs[i].id === tabId) return this.tabs[i].status;
     }
     return 1;
+  },
+
+  onScroll: function(container) {
+    if (this.loading || !this.hasMore) return;
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 200) {
+      this.page++;
+      this.loadList();
+    }
   },
 
   loadList: function() {

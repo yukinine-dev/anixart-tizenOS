@@ -11,6 +11,14 @@ var FocusManager = {
 
   handleKey: function(e) {
     var keyCode = e.keyCode;
+
+    if (typeof PlayerScreen !== 'undefined' && App.currentScreen === 'player') {
+      if (PlayerScreen.handleKey(keyCode)) {
+        e.preventDefault();
+        return;
+      }
+    }
+
     switch (keyCode) {
       case 37: // Left
         e.preventDefault();
@@ -35,6 +43,11 @@ var FocusManager = {
       case 10009: // Back (Tizen)
       case 8:     // Backspace
         e.preventDefault();
+        var popup = document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('player-ep-list');
+        if (popup) {
+          popup.remove();
+          return;
+        }
         if (typeof App !== 'undefined') {
           App.goBack();
         }

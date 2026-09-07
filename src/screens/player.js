@@ -68,10 +68,26 @@ var PlayerScreen = {
     titleWrap.appendChild(releaseTitle);
 
     topBar.appendChild(titleWrap);
+
+    var epListBtn = document.createElement('button');
+    epListBtn.className = 'player-ep-list-btn';
+    epListBtn.setAttribute('data-focusable', 'true');
+    epListBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill="currentColor"/></svg>';
+    epListBtn.addEventListener('click', function() { PlayerScreen.showEpisodeList(); });
+    topBar.appendChild(epListBtn);
+
     overlay.appendChild(topBar);
 
     var centerControls = document.createElement('div');
     centerControls.className = 'player-center-controls';
+
+    var prevBtn = document.createElement('button');
+    prevBtn.className = 'player-ctrl-btn';
+    prevBtn.id = 'player-prev-btn';
+    prevBtn.setAttribute('data-focusable', 'true');
+    prevBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" fill="currentColor"/></svg>';
+    prevBtn.addEventListener('click', function() { PlayerScreen.prevEpisode(); });
+    centerControls.appendChild(prevBtn);
 
     var rwdBtn = document.createElement('button');
     rwdBtn.className = 'player-ctrl-btn';
@@ -94,6 +110,14 @@ var PlayerScreen = {
     fwdBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" fill="currentColor"/></svg>';
     fwdBtn.addEventListener('click', function() { PlayerScreen.seek(10); });
     centerControls.appendChild(fwdBtn);
+
+    var nextBtn = document.createElement('button');
+    nextBtn.className = 'player-ctrl-btn';
+    nextBtn.id = 'player-next-btn';
+    nextBtn.setAttribute('data-focusable', 'true');
+    nextBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg>';
+    nextBtn.addEventListener('click', function() { PlayerScreen.nextEpisode(); });
+    centerControls.appendChild(nextBtn);
 
     overlay.appendChild(centerControls);
 
@@ -128,6 +152,11 @@ var PlayerScreen = {
     timeCurrent.textContent = '0:00';
     timeRow.appendChild(timeCurrent);
 
+    var epIndicator = document.createElement('span');
+    epIndicator.className = 'player-ep-indicator';
+    epIndicator.id = 'player-ep-indicator';
+    timeRow.appendChild(epIndicator);
+
     var timeDuration = document.createElement('span');
     timeDuration.className = 'player-time';
     timeDuration.id = 'player-time-duration';
@@ -143,6 +172,7 @@ var PlayerScreen = {
     this.setupVideoEvents(video);
     this.loadEpisode(this.currentEpisodeIndex);
     this.showControls();
+    this.updateEpIndicator();
 
     playerWrap.addEventListener('click', function(e) {
       if (e.target === playerWrap || e.target === video || e.target.id === 'player-overlay') {
@@ -186,10 +216,7 @@ var PlayerScreen = {
     });
 
     video.addEventListener('ended', function() {
-      if (self.currentEpisodeIndex < self.episodes.length - 1) {
-        self.currentEpisodeIndex++;
-        self.loadEpisode(self.currentEpisodeIndex);
-      }
+      self.nextEpisode();
     });
 
     video.addEventListener('error', function() {
@@ -220,6 +247,84 @@ var PlayerScreen = {
       this.videoEl.src = url;
       this.videoEl.play().catch(function() {});
     }
+
+    this.updateEpIndicator();
+  },
+
+  nextEpisode: function() {
+    if (this.currentEpisodeIndex < this.episodes.length - 1) {
+      this.saveProgress();
+      this.currentEpisodeIndex++;
+      this.loadEpisode(this.currentEpisodeIndex);
+      this.showControls();
+    }
+  },
+
+  prevEpisode: function() {
+    if (this.currentEpisodeIndex > 0) {
+      this.saveProgress();
+      this.currentEpisodeIndex--;
+      this.loadEpisode(this.currentEpisodeIndex);
+      this.showControls();
+    }
+  },
+
+  updateEpIndicator: function() {
+    var el = document.getElementById('player-ep-indicator');
+    if (el) {
+      el.textContent = (this.currentEpisodeIndex + 1) + ' / ' + this.episodes.length;
+    }
+  },
+
+  showEpisodeList: function() {
+    var existing = document.getElementById('player-ep-list');
+    if (existing) { existing.remove(); return; }
+
+    var panel = document.createElement('div');
+    panel.className = 'player-ep-list';
+    panel.id = 'player-ep-list';
+
+    var panelTitle = document.createElement('div');
+    panelTitle.className = 'player-ep-list-title';
+    panelTitle.textContent = 'Эпизоды';
+    panel.appendChild(panelTitle);
+
+    var list = document.createElement('div');
+    list.className = 'player-ep-list-scroll';
+
+    for (var i = 0; i < this.episodes.length; i++) {
+      var ep = this.episodes[i];
+      var item = document.createElement('button');
+      item.className = 'player-ep-list-item' + (i === this.currentEpisodeIndex ? ' active' : '');
+      item.setAttribute('data-focusable', 'true');
+      item.textContent = (ep.position != null ? ep.position : (i + 1)) + '. ' + (ep.name || ('Эпизод ' + (ep.position != null ? ep.position : (i + 1))));
+
+      (function(idx) {
+        item.addEventListener('click', function() {
+          PlayerScreen.saveProgress();
+          PlayerScreen.currentEpisodeIndex = idx;
+          PlayerScreen.loadEpisode(idx);
+          var panel = document.getElementById('player-ep-list');
+          if (panel) panel.remove();
+          PlayerScreen.showControls();
+        });
+      })(i);
+
+      list.appendChild(item);
+    }
+
+    panel.appendChild(list);
+
+    var wrap = document.getElementById('player-wrap');
+    if (wrap) wrap.appendChild(panel);
+
+    setTimeout(function() {
+      var activeItem = panel.querySelector('.player-ep-list-item.active');
+      if (activeItem) {
+        FocusManager.setFocus(activeItem);
+        activeItem.scrollIntoView({ block: 'center' });
+      }
+    }, 50);
   },
 
   togglePlay: function() {
@@ -249,6 +354,9 @@ var PlayerScreen = {
   },
 
   showControls: function() {
+    var epList = document.getElementById('player-ep-list');
+    if (epList) return;
+
     var overlay = document.getElementById('player-overlay');
     if (overlay) overlay.classList.add('visible');
     this.controlsVisible = true;
@@ -269,12 +377,18 @@ var PlayerScreen = {
 
   formatTime: function(s) {
     if (!s || isNaN(s)) return '0:00';
-    var mins = Math.floor(s / 60);
+    var hours = Math.floor(s / 3600);
+    var mins = Math.floor((s % 3600) / 60);
     var secs = Math.floor(s % 60);
+    if (hours > 0) {
+      return hours + ':' + (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
     return mins + ':' + (secs < 10 ? '0' : '') + secs;
   },
 
   handleKey: function(keyCode) {
+    var epList = document.getElementById('player-ep-list');
+
     switch (keyCode) {
       case 415: // Play
       case 10252: // PlayPause
@@ -290,11 +404,15 @@ var PlayerScreen = {
         this.seek(-30);
         return true;
       case 37: // Left
-        this.seek(-10);
-        return true;
+        if (!epList) { this.seek(-10); return true; }
+        break;
       case 39: // Right
-        this.seek(10);
-        return true;
+        if (!epList) { this.seek(10); return true; }
+        break;
+      case 10009: // Back (Tizen)
+      case 8:     // Backspace
+        if (epList) { epList.remove(); return true; }
+        break;
     }
     return false;
   },

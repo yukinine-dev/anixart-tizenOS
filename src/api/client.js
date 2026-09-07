@@ -3,6 +3,25 @@ var ApiClient = {
 
   request: function(method, endpoint, options) {
     options = options || {};
+    var retries = options.retries != null ? options.retries : 2;
+    var self = this;
+
+    return this._doRequest(method, endpoint, options).catch(function(err) {
+      if (retries > 0 && err.status === 0) {
+        var delay = (3 - retries) * 1500;
+        return new Promise(function(resolve) {
+          setTimeout(resolve, delay);
+        }).then(function() {
+          options.retries = retries - 1;
+          return self.request(method, endpoint, options);
+        });
+      }
+      throw err;
+    });
+  },
+
+  _doRequest: function(method, endpoint, options) {
+    options = options || {};
     var url = this.BASE_URL + endpoint;
 
     if (options.token) {

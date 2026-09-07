@@ -908,6 +908,48 @@ input {
   border-radius: 16px;
 }
 
+/* ===== SOURCE SELECTOR ===== */
+
+.source-container {
+  min-height: 40px;
+}
+
+.source-single {
+  font-size: 15px;
+  color: var(--color-secondary-text);
+  padding: 8px 0;
+}
+
+.source-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.source-list::-webkit-scrollbar {
+  display: none;
+}
+
+.source-chip {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: var(--color-secondary-text);
+  font-family: var(--font-medium);
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.source-chip.active {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
 /* ===== EPISODES ===== */
 
 .episodes-container {
@@ -1464,6 +1506,87 @@ input {
   color: rgba(255,255,255,0.7);
   font-size: 13px;
   font-family: var(--font-body);
+}
+
+.player-ep-indicator {
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+}
+
+.player-ep-list-btn {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-ep-list {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 360px;
+  height: 100%;
+  background: rgba(10, 10, 10, 0.95);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.player-ep-list-title {
+  padding: 20px 24px 12px;
+  color: #ffffff;
+  font-family: var(--font-medium);
+  font-size: 18px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.player-ep-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 20px;
+}
+
+.player-ep-list-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.player-ep-list-item {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-ep-list-item.active {
+  background: rgba(240, 78, 92, 0.2);
+  color: var(--color-accent);
+}
+
+.player-ep-list-item.focused {
+  outline: none !important;
+  transform: none;
+  background: rgba(255,255,255,0.1);
+}
+
+.player-ep-list-item.active.focused {
+  background: rgba(240, 78, 92, 0.3);
 }
 
 /* ===== BOOKMARKS SCREEN ===== */
@@ -2042,6 +2165,39 @@ input {
 
 .bookmark-picker-item.active {
   color: var(--color-accent);
+}
+
+.share-dialog-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.share-dialog-title {
+  font-family: var(--font-medium);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-primary-text);
+  text-align: center;
+  margin-bottom: 12px;
+  background: var(--color-surface);
+  width: 320px;
+  padding: 20px 24px 8px;
+  border-radius: 16px 16px 0 0;
+}
+
+.share-dialog-url {
+  font-size: 14px;
+  color: var(--color-accent);
+  word-break: break-all;
+  text-align: center;
+  background: var(--color-surface);
+  width: 320px;
+  padding: 8px 24px 20px;
+  border-radius: 0 0 16px 16px;
+  border-top: 1px solid var(--color-separator);
 }
 
 .bookmark-picker-remove {

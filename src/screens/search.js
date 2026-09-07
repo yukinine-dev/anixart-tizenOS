@@ -2,11 +2,19 @@ var SearchScreen = {
   query: '',
   results: [],
   searchTimeout: null,
+  page: 0,
+  loading: false,
+  hasMore: true,
 
   render: function() {
     var container = document.getElementById('app');
     container.innerHTML = '';
     container.className = 'screen-search';
+
+    this.page = 0;
+    this.results = [];
+    this.hasMore = true;
+    this.loading = false;
 
     var searchBar = document.createElement('div');
     searchBar.className = 'search-screen-bar';
@@ -64,12 +72,24 @@ var SearchScreen = {
     emptyState.textContent = 'Введите название аниме';
     resultsContainer.appendChild(emptyState);
 
+    resultsContainer.addEventListener('scroll', function() {
+      SearchScreen.onScroll(resultsContainer);
+    });
+
     container.appendChild(resultsContainer);
 
     var bottomNav = BottomNav.render('discover');
     container.appendChild(bottomNav);
 
     setTimeout(function() { FocusManager.setFocus(input); }, 100);
+  },
+
+  onScroll: function(container) {
+    if (this.loading || !this.hasMore || !this.query) return;
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 200) {
+      this.page++;
+      this.loadMore();
+    }
   },
 
   onInput: function(value) {
@@ -80,6 +100,9 @@ var SearchScreen = {
     if (this.searchTimeout) clearTimeout(this.searchTimeout);
 
     if (!this.query) {
+      this.page = 0;
+      this.results = [];
+      this.hasMore = true;
       this.showEmpty('Введите название аниме');
       return;
     }
@@ -88,33 +111,58 @@ var SearchScreen = {
 
     var self = this;
     this.searchTimeout = setTimeout(function() {
-      self.doSearch(self.query);
+      self.page = 0;
+      self.results = [];
+      self.hasMore = true;
+      self.doSearch(self.query, 0);
     }, 400);
   },
 
-  doSearch: function(query) {
+  doSearch: function(query, page) {
     var token = Storage.getToken();
     var container = document.getElementById('search-results');
     if (!container) return;
 
-    container.innerHTML = '<div class="search-loading"><div class="spinner"></div></div>';
+    this.loading = true;
 
-    if (typeof Debug !== 'undefined') Debug.log('info', 'Search: "' + query + '"');
+    if (page === 0) {
+      container.innerHTML = '<div class="search-loading"><div class="spinner"></div></div>';
+    }
 
-    SearchApi.search(query, 0, token).then(function(response) {
+    if (typeof Debug !== 'undefined') Debug.log('info', 'Search: "' + query + '" page=' + page);
+
+    var self = this;
+    SearchApi.search(query, page, token).then(function(response) {
+      self.loading = false;
       var items = response.content || [];
       if (typeof Debug !== 'undefined') Debug.log('info', 'Search: ' + items.length + ' results');
 
-      if (items.length === 0) {
-        SearchScreen.showEmpty('Ничего не найдено');
+      if (items.length === 0 && page === 0) {
+        self.hasMore = false;
+        self.showEmpty('Ничего не найдено');
         return;
       }
 
-      SearchScreen.renderResults(items);
+      if (items.length === 0) {
+        self.hasMore = false;
+        return;
+      }
+
+      self.results = self.results.concat(items);
+      self.renderResults(self.results);
     }).catch(function(err) {
+      self.loading = false;
       if (typeof Debug !== 'undefined') Debug.log('error', 'Search failed', err);
-      SearchScreen.showEmpty('Ошибка поиска');
+      if (page === 0) {
+        self.showEmpty('Ошибка поиска');
+      }
     });
+  },
+
+  loadMore: function() {
+    if (this.query) {
+      this.doSearch(this.query, this.page);
+    }
   },
 
   showEmpty: function(text) {
@@ -138,10 +186,12 @@ var SearchScreen = {
 
     container.appendChild(grid);
 
-    setTimeout(function() {
-      var first = grid.querySelector('[data-focusable]');
-      if (first) FocusManager.setFocus(first);
-    }, 100);
+    if (this.page === 0) {
+      setTimeout(function() {
+        var first = grid.querySelector('[data-focusable]');
+        if (first) FocusManager.setFocus(first);
+      }, 100);
+    }
   },
 
   createResultCard: function(release) {
