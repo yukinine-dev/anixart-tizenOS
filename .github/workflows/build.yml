@@ -6,6 +6,7 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -32,8 +33,19 @@ jobs:
           name: anixart-tizen-wgt
           path: anixart-tizen.wgt
 
+      - name: Get version
+        id: version
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
       - name: Create release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Anixart Tizen v${{ steps.version.outputs.version }}
+          body: |
+            Сборка Anixart для Samsung Tizen TV.
+
+            Скачай `anixart-tizen.wgt` и установи через Tizen Studio.
           files: anixart-tizen.wgt
+          make_latest: true
