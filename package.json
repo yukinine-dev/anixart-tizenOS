@@ -5,6 +5,6 @@
   "scripts": {
     "build": "echo 'Static project — no build step required'",
     "serve": "npx http-server . -p 8080 -c-1",
-    "package": "zip -r anixart-tizen.wgt config.xml index.html src/ styles/ assets/ -x '*.DS_Store'"
+    "package": "zip -r anixart-tizen.wgt config.xml index.html auth-helper.html src/ styles/ assets/ -x '*.DS_Store'"
   }
 }
