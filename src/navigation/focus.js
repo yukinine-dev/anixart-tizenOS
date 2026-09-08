@@ -11,6 +11,14 @@ var FocusManager = {
 
   handleKey: function(e) {
     var keyCode = e.keyCode;
+
+    if (typeof PlayerScreen !== 'undefined' && App.currentScreen === 'player') {
+      if (PlayerScreen.handleKey(keyCode)) {
+        e.preventDefault();
+        return;
+      }
+    }
+
     switch (keyCode) {
       case 37: // Left
         e.preventDefault();
@@ -35,12 +43,29 @@ var FocusManager = {
       case 10009: // Back (Tizen)
       case 8:     // Backspace
         e.preventDefault();
+        var popup = document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('player-ep-list');
+        if (popup) {
+          popup.remove();
+          return;
+        }
         if (typeof App !== 'undefined') {
           App.goBack();
         }
         break;
       case 415: // Play
       case 10252: // Play/Pause (Tizen)
+        break;
+      case 73: // 'i' key
+        if (typeof Debug !== 'undefined') {
+          e.preventDefault();
+          Debug.toggle();
+        }
+        break;
+      case 403: // Green button (Tizen remote)
+        if (typeof Debug !== 'undefined') {
+          e.preventDefault();
+          Debug.toggle();
+        }
         break;
     }
   },

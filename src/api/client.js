@@ -3,6 +3,25 @@ var ApiClient = {
 
   request: function(method, endpoint, options) {
     options = options || {};
+    var retries = options.retries != null ? options.retries : 2;
+    var self = this;
+
+    return this._doRequest(method, endpoint, options).catch(function(err) {
+      if (retries > 0 && err.status === 0) {
+        var delay = (3 - retries) * 1500;
+        return new Promise(function(resolve) {
+          setTimeout(resolve, delay);
+        }).then(function() {
+          options.retries = retries - 1;
+          return self.request(method, endpoint, options);
+        });
+      }
+      throw err;
+    });
+  },
+
+  _doRequest: function(method, endpoint, options) {
+    options = options || {};
     var url = this.BASE_URL + endpoint;
 
     if (options.token) {
@@ -26,24 +45,33 @@ var ApiClient = {
       xhr.setRequestHeader('Content-Type', 'application/json');
     }
 
+    var startTime = Date.now();
+
     return new Promise(function(resolve, reject) {
       xhr.onload = function() {
+        var duration = Date.now() - startTime;
         if (xhr.status >= 200 && xhr.status < 300) {
+          if (typeof Debug !== 'undefined') Debug.logApi(method, url, xhr.status, duration);
           try {
             resolve(JSON.parse(xhr.responseText));
           } catch (e) {
             resolve(xhr.responseText);
           }
         } else {
+          if (typeof Debug !== 'undefined') Debug.logApi(method, url, xhr.status, duration, xhr.responseText);
           reject({ status: xhr.status, text: xhr.responseText });
         }
       };
 
       xhr.onerror = function() {
+        var duration = Date.now() - startTime;
+        if (typeof Debug !== 'undefined') Debug.logApi(method, url, 0, duration, 'Network error');
         reject({ status: 0, text: 'Network error' });
       };
 
       xhr.ontimeout = function() {
+        var duration = Date.now() - startTime;
+        if (typeof Debug !== 'undefined') Debug.logApi(method, url, 0, duration, 'Timeout');
         reject({ status: 0, text: 'Request timeout' });
       };
 

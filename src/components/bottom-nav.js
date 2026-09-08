@@ -45,8 +45,22 @@ var BottomNav = {
   },
 
   onTabClick: function(tabId) {
-    if (tabId === 'home') {
-      App.showScreen('home');
+    switch (tabId) {
+      case 'home':
+        App.showScreen('home');
+        break;
+      case 'discover':
+        App.showScreen('search');
+        break;
+      case 'bookmarks':
+        App.showScreen('bookmarks');
+        break;
+      case 'feed':
+        App.showScreen('feed');
+        break;
+      case 'profile':
+        App.showScreen('profile');
+        break;
     }
   }
 };

@@ -1,5 +1,7 @@
 var DetailsScreen = {
   currentRelease: null,
+  loadedSources: [],
+  currentSourceIndex: 0,
 
   render: function(params) {
     var container = document.getElementById('app');
@@ -22,11 +24,15 @@ var DetailsScreen = {
     var token = Storage.getToken();
     var self = this;
 
+    if (typeof Debug !== 'undefined') Debug.log('info', 'Details: loading release ' + releaseId);
+
     ReleaseApi.getRelease(releaseId, token).then(function(response) {
       var release = response.release || response;
       self.currentRelease = release;
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Details: loaded "' + (release.title_ru || release.title || releaseId) + '"');
       self.renderRelease(release);
     }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Details: failed to load release ' + releaseId, err);
       var container = document.getElementById('app');
       container.innerHTML = '<div class="error-state">Ошибка загрузки</div>';
     });
@@ -106,6 +112,20 @@ var DetailsScreen = {
       }
     }
 
+    if (release.episodes_total) {
+      var epBadge = document.createElement('span');
+      epBadge.className = 'badge';
+      epBadge.textContent = release.episodes_total + ' эп.';
+      badges.appendChild(epBadge);
+    }
+
+    if (release.grade) {
+      var gradeBadge = document.createElement('span');
+      gradeBadge.className = 'badge';
+      gradeBadge.textContent = parseFloat(release.grade).toFixed(1);
+      badges.appendChild(gradeBadge);
+    }
+
     titleBlock.appendChild(badges);
     hero.appendChild(titleBlock);
     scroll.appendChild(hero);
@@ -124,14 +144,28 @@ var DetailsScreen = {
 
     var favBtn = document.createElement('button');
     favBtn.className = 'details-action-btn';
+    favBtn.id = 'details-fav-btn';
     favBtn.setAttribute('data-focusable', 'true');
-    favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+
+    if (release.profile_list_status) {
+      var statusNames = { 1: 'Смотрю', 2: 'В планах', 3: 'Просмотрено', 4: 'Отложено', 5: 'Брошено' };
+      favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg><span>' + (statusNames[release.profile_list_status] || 'Закладка') + '</span>';
+    } else {
+      favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+    }
+
+    favBtn.addEventListener('click', function() {
+      DetailsScreen.showBookmarkPicker(release);
+    });
     actions.appendChild(favBtn);
 
     var shareBtn = document.createElement('button');
     shareBtn.className = 'details-action-btn';
     shareBtn.setAttribute('data-focusable', 'true');
     shareBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" fill="currentColor"/></svg><span>Поделиться</span>';
+    shareBtn.addEventListener('click', function() {
+      DetailsScreen.showShareDialog(release);
+    });
     actions.appendChild(shareBtn);
 
     scroll.appendChild(actions);
@@ -169,6 +203,23 @@ var DetailsScreen = {
       scroll.appendChild(genresSection);
     }
 
+    var sourceSection = document.createElement('div');
+    sourceSection.className = 'details-section';
+    sourceSection.id = 'source-section';
+    var sourceTitle = document.createElement('div');
+    sourceTitle.className = 'details-section-title';
+    sourceTitle.textContent = 'Озвучка';
+    sourceSection.appendChild(sourceTitle);
+    var sourceContainer = document.createElement('div');
+    sourceContainer.id = 'source-container';
+    sourceContainer.className = 'source-container';
+    var sourceLoading = document.createElement('div');
+    sourceLoading.className = 'episodes-loading';
+    sourceLoading.textContent = 'Загрузка...';
+    sourceContainer.appendChild(sourceLoading);
+    sourceSection.appendChild(sourceContainer);
+    scroll.appendChild(sourceSection);
+
     var episodesSection = document.createElement('div');
     episodesSection.className = 'details-section';
     episodesSection.id = 'episodes-section';
@@ -188,25 +239,102 @@ var DetailsScreen = {
 
     container.appendChild(scroll);
 
-    this.loadEpisodesList(release.id);
+    this.loadSources(release.id);
 
     setTimeout(function() {
       FocusManager.setFocus(watchBtn);
     }, 200);
   },
 
-  loadEpisodesList: function(releaseId) {
+  loadedEpisodes: [],
+
+  loadSources: function(releaseId) {
     var token = Storage.getToken();
-    var container = document.getElementById('episodes-container');
+    var self = this;
+    var sourceContainer = document.getElementById('source-container');
 
     ReleaseApi.getSources(releaseId, token).then(function(response) {
       var sources = response.content || response || [];
-      if (sources.length > 0) {
-        return ReleaseApi.getEpisodes(releaseId, sources[0].id, token);
+      self.loadedSources = sources;
+      self.currentSourceIndex = 0;
+
+      if (!sourceContainer) return;
+      sourceContainer.innerHTML = '';
+
+      if (sources.length === 0) {
+        var section = document.getElementById('source-section');
+        if (section) section.style.display = 'none';
+        self.loadEpisodesList(releaseId, null);
+        return;
       }
-      return ReleaseApi.getEpisodes(releaseId, null, token);
-    }).then(function(response) {
+
+      if (sources.length === 1) {
+        var single = document.createElement('div');
+        single.className = 'source-single';
+        single.textContent = sources[0].name || sources[0].title || 'Озвучка 1';
+        sourceContainer.appendChild(single);
+      } else {
+        var list = document.createElement('div');
+        list.className = 'source-list section-scroll';
+
+        for (var i = 0; i < sources.length; i++) {
+          var src = sources[i];
+          var btn = document.createElement('button');
+          btn.className = 'source-chip' + (i === 0 ? ' active' : '');
+          btn.setAttribute('data-focusable', 'true');
+          btn.setAttribute('data-source-idx', i);
+          btn.textContent = src.name || src.title || ('Озвучка ' + (i + 1));
+
+          (function(idx) {
+            btn.addEventListener('click', function() {
+              DetailsScreen.switchSource(idx);
+            });
+          })(i);
+
+          list.appendChild(btn);
+        }
+        sourceContainer.appendChild(list);
+      }
+
+      self.loadEpisodesList(releaseId, sources[0].id);
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Sources: failed to load', err);
+      if (sourceContainer) {
+        var section = document.getElementById('source-section');
+        if (section) section.style.display = 'none';
+      }
+      self.loadEpisodesList(releaseId, null);
+    });
+  },
+
+  switchSource: function(idx) {
+    if (idx === this.currentSourceIndex) return;
+    this.currentSourceIndex = idx;
+
+    var chips = document.querySelectorAll('.source-chip');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].classList.toggle('active', parseInt(chips[i].getAttribute('data-source-idx')) === idx);
+    }
+
+    var epContainer = document.getElementById('episodes-container');
+    if (epContainer) {
+      epContainer.innerHTML = '<div class="episodes-loading">Загрузка...</div>';
+    }
+
+    var source = this.loadedSources[idx];
+    if (source && this.currentRelease) {
+      this.loadEpisodesList(this.currentRelease.id, source.id);
+    }
+  },
+
+  loadEpisodesList: function(releaseId, sourceId) {
+    var token = Storage.getToken();
+    var container = document.getElementById('episodes-container');
+    var self = this;
+
+    ReleaseApi.getEpisodes(releaseId, sourceId, token).then(function(response) {
       var episodes = response.content || response || [];
+      self.loadedEpisodes = episodes;
       if (!container) return;
       container.innerHTML = '';
 
@@ -234,21 +362,192 @@ var DetailsScreen = {
         epName.textContent = ep.name || ('Эпизод ' + (ep.position != null ? ep.position : (i + 1)));
         epCard.appendChild(epName);
 
+        (function(idx) {
+          epCard.addEventListener('click', function() {
+            DetailsScreen.openPlayer(idx);
+          });
+        })(i);
+
         list.appendChild(epCard);
       }
 
       container.appendChild(list);
     }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Episodes: failed to load for release ' + releaseId, err);
       if (container) {
         container.innerHTML = '<div class="episodes-empty">Ошибка загрузки эпизодов</div>';
       }
     });
   },
 
+  openPlayer: function(episodeIndex) {
+    var release = this.currentRelease;
+    if (!release || !this.loadedEpisodes.length) return;
+    App.showScreen('player', {
+      releaseId: release.id,
+      releaseTitle: release.title_ru || release.title || '',
+      episodes: this.loadedEpisodes,
+      episodeIndex: episodeIndex || 0
+    });
+  },
+
   loadEpisodes: function(releaseId) {
-    var section = document.getElementById('episodes-section');
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth' });
+    if (this.loadedEpisodes && this.loadedEpisodes.length > 0) {
+      this.openPlayer(0);
+    } else {
+      var section = document.getElementById('episodes-section');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth' });
+      }
     }
+  },
+
+  showShareDialog: function(release) {
+    var existing = document.getElementById('share-dialog');
+    if (existing) { existing.remove(); return; }
+
+    var overlay = document.createElement('div');
+    overlay.className = 'bookmark-picker';
+    overlay.id = 'share-dialog';
+
+    var content = document.createElement('div');
+    content.className = 'share-dialog-content';
+
+    var title = document.createElement('div');
+    title.className = 'share-dialog-title';
+    title.textContent = release.title_ru || release.title || '';
+    content.appendChild(title);
+
+    var url = 'https://anixart.tv/release/' + release.id;
+    var urlEl = document.createElement('div');
+    urlEl.className = 'share-dialog-url';
+    urlEl.textContent = url;
+    content.appendChild(urlEl);
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'bookmark-picker-item';
+    closeBtn.setAttribute('data-focusable', 'true');
+    closeBtn.textContent = 'Закрыть';
+    closeBtn.style.borderRadius = '16px';
+    closeBtn.style.marginTop = '12px';
+    closeBtn.addEventListener('click', function() {
+      overlay.remove();
+    });
+    content.appendChild(closeBtn);
+
+    overlay.appendChild(content);
+
+    var container = document.getElementById('app');
+    container.appendChild(overlay);
+
+    setTimeout(function() {
+      FocusManager.setFocus(closeBtn);
+    }, 50);
+
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) overlay.remove();
+    });
+  },
+
+  showBookmarkPicker: function(release) {
+    var existing = document.getElementById('bookmark-picker');
+    if (existing) { existing.remove(); return; }
+
+    var picker = document.createElement('div');
+    picker.className = 'bookmark-picker';
+    picker.id = 'bookmark-picker';
+
+    var lists = [
+      { status: 1, label: 'Смотрю' },
+      { status: 2, label: 'В планах' },
+      { status: 3, label: 'Просмотрено' },
+      { status: 4, label: 'Отложено' },
+      { status: 5, label: 'Брошено' }
+    ];
+
+    for (var i = 0; i < lists.length; i++) {
+      var item = lists[i];
+      var btn = document.createElement('button');
+      btn.className = 'bookmark-picker-item';
+      btn.setAttribute('data-focusable', 'true');
+      btn.textContent = item.label;
+
+      if (release.profile_list_status === item.status) {
+        btn.classList.add('active');
+      }
+
+      (function(status) {
+        btn.addEventListener('click', function() {
+          DetailsScreen.addToList(release, status);
+        });
+      })(item.status);
+
+      picker.appendChild(btn);
+    }
+
+    if (release.profile_list_status) {
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'bookmark-picker-item bookmark-picker-remove';
+      removeBtn.setAttribute('data-focusable', 'true');
+      removeBtn.textContent = 'Удалить из списка';
+      removeBtn.addEventListener('click', function() {
+        DetailsScreen.removeFromList(release);
+      });
+      picker.appendChild(removeBtn);
+    }
+
+    var container = document.getElementById('app');
+    container.appendChild(picker);
+
+    setTimeout(function() {
+      var first = picker.querySelector('[data-focusable]');
+      if (first) FocusManager.setFocus(first);
+    }, 50);
+
+    picker.addEventListener('click', function(e) {
+      if (e.target === picker) picker.remove();
+    });
+  },
+
+  addToList: function(release, status) {
+    var token = Storage.getToken();
+    if (!token || typeof ProfileApi === 'undefined') return;
+
+    var statusNames = { 1: 'Смотрю', 2: 'В планах', 3: 'Просмотрено', 4: 'Отложено', 5: 'Брошено' };
+
+    ProfileApi.addToList(release.id, status, token).then(function() {
+      release.profile_list_status = status;
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Bookmark: added to ' + statusNames[status]);
+
+      var favBtn = document.getElementById('details-fav-btn');
+      if (favBtn) {
+        favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg><span>' + statusNames[status] + '</span>';
+      }
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Bookmark: add failed', err);
+    });
+
+    var picker = document.getElementById('bookmark-picker');
+    if (picker) picker.remove();
+  },
+
+  removeFromList: function(release) {
+    var token = Storage.getToken();
+    if (!token || typeof ProfileApi === 'undefined') return;
+
+    ProfileApi.removeFromList(release.id, token).then(function() {
+      release.profile_list_status = null;
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Bookmark: removed');
+
+      var favBtn = document.getElementById('details-fav-btn');
+      if (favBtn) {
+        favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+      }
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Bookmark: remove failed', err);
+    });
+
+    var picker = document.getElementById('bookmark-picker');
+    if (picker) picker.remove();
   }
 };

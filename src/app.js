@@ -5,13 +5,15 @@ var App = {
   init: function() {
     document.documentElement.setAttribute('data-theme', Storage.getTheme());
 
+    if (typeof Debug !== 'undefined') Debug.init();
     FocusManager.init();
 
     if (typeof tizen !== 'undefined') {
       try {
         tizen.tvinputdevice.registerKeyBatch([
           'MediaPlay', 'MediaPause', 'MediaPlayPause',
-          'MediaStop', 'MediaFastForward', 'MediaRewind'
+          'MediaStop', 'MediaFastForward', 'MediaRewind',
+          'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue'
         ]);
       } catch (e) {}
     }
@@ -24,6 +26,12 @@ var App = {
   },
 
   showScreen: function(name, params) {
+    if (typeof Debug !== 'undefined') Debug.logNav('screen', name + (params ? ' ' + JSON.stringify(params) : ''));
+
+    if (this.currentScreen === 'player' && name !== 'player') {
+      PlayerScreen.destroy();
+    }
+
     if (this.currentScreen && this.currentScreen !== name) {
       this.history.push({ name: this.currentScreen, params: this.currentParams });
     }
@@ -40,10 +48,31 @@ var App = {
       case 'details':
         DetailsScreen.render(params);
         break;
+      case 'search':
+        SearchScreen.render();
+        break;
+      case 'player':
+        PlayerScreen.render(params);
+        break;
+      case 'bookmarks':
+        BookmarksScreen.render();
+        break;
+      case 'feed':
+        FeedScreen.render();
+        break;
+      case 'profile':
+        ProfileScreen.render();
+        break;
     }
   },
 
   goBack: function() {
+    if (typeof Debug !== 'undefined') Debug.logNav('back', 'from ' + this.currentScreen);
+
+    if (this.currentScreen === 'player') {
+      PlayerScreen.destroy();
+    }
+
     if (this.history.length > 0) {
       var prev = this.history.pop();
       this.currentScreen = prev.name;
@@ -57,6 +86,21 @@ var App = {
           break;
         case 'details':
           DetailsScreen.render(prev.params);
+          break;
+        case 'search':
+          SearchScreen.render();
+          break;
+        case 'player':
+          PlayerScreen.render(prev.params);
+          break;
+        case 'bookmarks':
+          BookmarksScreen.render();
+          break;
+        case 'feed':
+          FeedScreen.render();
+          break;
+        case 'profile':
+          ProfileScreen.render();
           break;
       }
     } else if (this.currentScreen !== 'home' && Storage.isLoggedIn()) {
