@@ -3,19 +3,30 @@ var App = {
   currentScreen: null,
 
   init: function() {
-    document.documentElement.setAttribute('data-theme', Storage.getTheme());
+    var theme = 'dark';
+    try { theme = Storage.getTheme() || 'dark'; } catch(e) {}
+    document.documentElement.setAttribute('data-theme', theme);
 
     if (typeof Debug !== 'undefined') Debug.init();
     FocusManager.init();
 
     if (typeof tizen !== 'undefined') {
+      var keys = [
+        'MediaPlay', 'MediaPause', 'MediaPlayPause',
+        'MediaStop', 'MediaFastForward', 'MediaRewind',
+        'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue',
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'
+      ];
       try {
-        tizen.tvinputdevice.registerKeyBatch([
-          'MediaPlay', 'MediaPause', 'MediaPlayPause',
-          'MediaStop', 'MediaFastForward', 'MediaRewind',
-          'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue'
-        ]);
-      } catch (e) {}
+        tizen.tvinputdevice.registerKeyBatch(keys);
+      } catch (e1) {
+        for (var i = 0; i < keys.length; i++) {
+          try { tizen.tvinputdevice.registerKey(keys[i]); } catch (e2) {}
+        }
+      }
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Tizen keys registered');
+    } else {
+      if (typeof Debug !== 'undefined') Debug.log('warn', 'tizen object not found');
     }
 
     if (Storage.isLoggedIn()) {
@@ -107,10 +118,59 @@ var App = {
       this.currentScreen = 'home';
       HomeScreen.render();
     } else {
+      this.showExitDialog();
+    }
+  },
+
+  showExitDialog: function() {
+    if (document.getElementById('exit-dialog')) return;
+
+    var prevFocused = FocusManager.currentFocused;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'exit-dialog';
+    overlay.className = 'exit-overlay';
+
+    var closeDialog = function() {
+      overlay.remove();
+      if (prevFocused) FocusManager.setFocus(prevFocused);
+    };
+    overlay.closeDialog = closeDialog;
+
+    var box = document.createElement('div');
+    box.className = 'exit-box';
+
+    var title = document.createElement('div');
+    title.className = 'exit-title';
+    title.textContent = 'Выйти из приложения?';
+    box.appendChild(title);
+
+    var buttons = document.createElement('div');
+    buttons.className = 'exit-buttons';
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'exit-btn exit-btn-cancel';
+    cancelBtn.textContent = 'Отмена';
+    cancelBtn.setAttribute('data-focusable', 'true');
+    cancelBtn.addEventListener('click', closeDialog);
+    buttons.appendChild(cancelBtn);
+
+    var exitBtn = document.createElement('button');
+    exitBtn.className = 'exit-btn exit-btn-confirm';
+    exitBtn.textContent = 'Выйти';
+    exitBtn.setAttribute('data-focusable', 'true');
+    exitBtn.addEventListener('click', function() {
       if (typeof tizen !== 'undefined') {
         tizen.application.getCurrentApplication().exit();
       }
-    }
+    });
+    buttons.appendChild(exitBtn);
+
+    box.appendChild(buttons);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    FocusManager.setFocus(cancelBtn);
   }
 };
 

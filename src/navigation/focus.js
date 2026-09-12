@@ -1,12 +1,28 @@
 var FocusManager = {
   currentFocused: null,
   sections: [],
+  inputActive: false,
 
   init: function() {
     var self = this;
-    document.addEventListener('keydown', function(e) {
+    var handled = {};
+    var handler = function(e) {
+      if (handled[e.timeStamp]) return;
+      handled[e.timeStamp] = true;
       self.handleKey(e);
-    });
+    };
+    document.addEventListener('keydown', handler);
+    window.addEventListener('keydown', handler);
+
+    document.body.setAttribute('tabindex', '0');
+    document.body.focus();
+
+    if (typeof Debug !== 'undefined') Debug.log('info', 'FocusManager.init() done');
+  },
+
+  isInputActive: function() {
+    var ae = document.activeElement;
+    return ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
   },
 
   handleKey: function(e) {
@@ -17,6 +33,23 @@ var FocusManager = {
         e.preventDefault();
         return;
       }
+    }
+
+    if (this.isInputActive()) {
+      if (keyCode === 38 || keyCode === 40) {
+        e.preventDefault();
+        document.activeElement.blur();
+        document.body.focus();
+        this.moveFocus(keyCode === 38 ? 'up' : 'down');
+        return;
+      }
+      if (keyCode === 10009) {
+        e.preventDefault();
+        document.activeElement.blur();
+        document.body.focus();
+        return;
+      }
+      return;
     }
 
     switch (keyCode) {
@@ -43,9 +76,10 @@ var FocusManager = {
       case 10009: // Back (Tizen)
       case 8:     // Backspace
         e.preventDefault();
-        var popup = document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('player-ep-list');
+        var popup = document.getElementById('exit-dialog') || document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('player-ep-list');
         if (popup) {
-          popup.remove();
+          if (popup.closeDialog) popup.closeDialog();
+          else popup.remove();
           return;
         }
         if (typeof App !== 'undefined') {
@@ -77,6 +111,12 @@ var FocusManager = {
     this.currentFocused = el;
     if (el) {
       el.classList.add('focused');
+      if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') {
+        if (!el.getAttribute('tabindex')) {
+          el.setAttribute('tabindex', '0');
+        }
+        el.focus();
+      }
       this.scrollIntoViewSmart(el);
     }
   },
@@ -105,7 +145,10 @@ var FocusManager = {
   },
 
   getFocusables: function(container) {
-    container = container || document.getElementById('app');
+    if (!container) {
+      var dialog = document.getElementById('exit-dialog');
+      container = dialog || document.getElementById('app');
+    }
     if (!container) return [];
     return Array.prototype.slice.call(container.querySelectorAll('[data-focusable]'));
   },
@@ -188,7 +231,12 @@ var FocusManager = {
 
   select: function() {
     if (this.currentFocused) {
-      this.currentFocused.click();
+      var el = this.currentFocused;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        el.focus();
+      } else {
+        el.click();
+      }
     }
   }
 };

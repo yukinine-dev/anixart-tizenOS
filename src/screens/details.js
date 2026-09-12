@@ -102,12 +102,12 @@ var DetailsScreen = {
       badges.appendChild(ageBadge);
     }
 
-    if (release.status) {
+    if (release.status_id) {
       var statuses = { 1: 'Онгоинг', 2: 'Вышел', 3: 'Анонс' };
-      if (statuses[release.status]) {
+      if (statuses[release.status_id]) {
         var statusBadge = document.createElement('span');
         statusBadge.className = 'badge';
-        statusBadge.textContent = statuses[release.status];
+        statusBadge.textContent = statuses[release.status_id];
         badges.appendChild(statusBadge);
       }
     }
@@ -184,23 +184,26 @@ var DetailsScreen = {
       scroll.appendChild(descSection);
     }
 
-    if (release.genres && release.genres.length > 0) {
-      var genresSection = document.createElement('div');
-      genresSection.className = 'details-section';
-      var genresTitle = document.createElement('div');
-      genresTitle.className = 'details-section-title';
-      genresTitle.textContent = 'Жанры';
-      genresSection.appendChild(genresTitle);
-      var genresList = document.createElement('div');
-      genresList.className = 'details-genres';
-      for (var i = 0; i < release.genres.length; i++) {
-        var chip = document.createElement('span');
-        chip.className = 'genre-chip';
-        chip.textContent = release.genres[i].name || release.genres[i];
-        genresList.appendChild(chip);
+    if (release.genres) {
+      var genreNames = release.genres.split(',').map(function(g) { return g.trim(); }).filter(Boolean);
+      if (genreNames.length > 0) {
+        var genresSection = document.createElement('div');
+        genresSection.className = 'details-section';
+        var genresTitle = document.createElement('div');
+        genresTitle.className = 'details-section-title';
+        genresTitle.textContent = 'Жанры';
+        genresSection.appendChild(genresTitle);
+        var genresList = document.createElement('div');
+        genresList.className = 'details-genres';
+        for (var i = 0; i < genreNames.length; i++) {
+          var chip = document.createElement('span');
+          chip.className = 'genre-chip';
+          chip.textContent = genreNames[i];
+          genresList.appendChild(chip);
+        }
+        genresSection.appendChild(genresList);
+        scroll.appendChild(genresSection);
       }
-      genresSection.appendChild(genresList);
-      scroll.appendChild(genresSection);
     }
 
     var sourceSection = document.createElement('div');

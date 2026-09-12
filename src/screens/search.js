@@ -208,12 +208,12 @@ var SearchScreen = {
     img.onerror = function() { this.style.background = 'var(--color-surface)'; };
     posterWrap.appendChild(img);
 
-    if (release.status) {
+    if (release.status_id) {
       var statusTexts = { 1: 'Онгоинг', 2: 'Вышел', 3: 'Анонс' };
-      if (statusTexts[release.status]) {
+      if (statusTexts[release.status_id]) {
         var badge = document.createElement('div');
         badge.className = 'release-status';
-        badge.textContent = statusTexts[release.status];
+        badge.textContent = statusTexts[release.status_id];
         posterWrap.appendChild(badge);
       }
     }
@@ -243,12 +243,14 @@ var SearchScreen = {
     meta.textContent = parts.join(' · ');
     info.appendChild(meta);
 
-    if (release.genres && release.genres.length > 0) {
-      var genres = document.createElement('div');
-      genres.className = 'search-card-genres';
-      var names = release.genres.slice(0, 3).map(function(g) { return g.name || g; });
-      genres.textContent = names.join(', ');
-      info.appendChild(genres);
+    if (release.genres) {
+      var names = release.genres.split(',').map(function(g) { return g.trim(); }).filter(Boolean);
+      if (names.length > 0) {
+        var genres = document.createElement('div');
+        genres.className = 'search-card-genres';
+        genres.textContent = names.slice(0, 3).join(', ');
+        info.appendChild(genres);
+      }
     }
 
     card.appendChild(info);

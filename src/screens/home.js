@@ -205,20 +205,19 @@ var HomeScreen = {
   },
 
   createInterestingCard: function(item) {
-    var release = item.release || item;
+    var releaseId = item.action ? parseInt(item.action, 10) : item.id;
+
     var card = document.createElement('div');
     card.className = 'interesting-card';
     card.setAttribute('data-focusable', 'true');
-    card.setAttribute('data-release-id', release.id || '');
+    card.setAttribute('data-release-id', releaseId || '');
 
     var img = document.createElement('img');
     img.className = 'interesting-poster';
-    img.alt = release.title_ru || release.title || '';
+    img.alt = item.title || '';
     img.loading = 'lazy';
-    if (release.image) {
-      img.src = release.image;
-    } else if (release.poster) {
-      img.src = release.poster;
+    if (item.image) {
+      img.src = item.image;
     }
     img.onerror = function() { this.style.display = 'none'; };
     card.appendChild(img);
@@ -228,13 +227,13 @@ var HomeScreen = {
 
     var title = document.createElement('div');
     title.className = 'interesting-title';
-    title.textContent = release.title_ru || release.title || '';
+    title.textContent = item.title || '';
     overlay.appendChild(title);
 
     card.appendChild(overlay);
 
     card.addEventListener('click', function() {
-      App.showScreen('details', { releaseId: release.id });
+      App.showScreen('details', { releaseId: releaseId });
     });
 
     return card;
@@ -314,11 +313,11 @@ var HomeScreen = {
     };
     posterWrap.appendChild(img);
 
-    if (release.status) {
+    if (release.status_id) {
       var statusBubble = document.createElement('div');
       statusBubble.className = 'release-status';
       var statusTexts = { 1: 'Онгоинг', 2: 'Вышел', 3: 'Анонс' };
-      statusBubble.textContent = statusTexts[release.status] || '';
+      statusBubble.textContent = statusTexts[release.status_id] || '';
       if (statusBubble.textContent) {
         posterWrap.appendChild(statusBubble);
       }

@@ -3,7 +3,7 @@ var SearchApi = {
     page = page || 0;
     return ApiClient.post('search/releases/' + page, {
       token: token,
-      formData: { searchText: query }
+      json: { query: query }
     });
   }
 };

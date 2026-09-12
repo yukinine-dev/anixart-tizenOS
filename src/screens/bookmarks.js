@@ -214,12 +214,12 @@ var BookmarksScreen = {
     img.onerror = function() { this.style.background = 'var(--color-surface)'; };
     poster.appendChild(img);
 
-    if (release.status) {
+    if (release.status_id) {
       var statusTexts = { 1: 'Онгоинг', 2: 'Вышел', 3: 'Анонс' };
-      if (statusTexts[release.status]) {
+      if (statusTexts[release.status_id]) {
         var badge = document.createElement('div');
         badge.className = 'release-status';
-        badge.textContent = statusTexts[release.status];
+        badge.textContent = statusTexts[release.status_id];
         poster.appendChild(badge);
       }
     }
