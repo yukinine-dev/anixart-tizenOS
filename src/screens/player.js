@@ -184,6 +184,7 @@ var PlayerScreen = {
     video.className = 'player-video';
     video.id = 'player-video';
     video.autoplay = true;
+    video.preload = 'auto';
     video.setAttribute('playsinline', '');
     video.src = url;
     video.playbackRate = this.playbackSpeed;
@@ -497,23 +498,53 @@ var PlayerScreen = {
   switchQuality: function(index) {
     if (!this.qualities || !this.qualities[index] || !this.videoEl) return;
     this.currentQualityIndex = index;
-    var video = this.videoEl;
-    var resumeTime = video.currentTime;
-    var wasPaused = video.paused;
-    var self = this;
+    this.switchSource(this.qualities[index].url);
 
-    video.src = this.qualities[index].url;
-    video.load();
+    var btn = document.getElementById('player-quality-btn');
+    if (btn) btn.textContent = this.qualities[index].quality + 'p';
+  },
+
+  switchSource: function(url) {
+    if (!this.videoEl) return;
+    var self = this;
+    var resumeTime = this.videoEl.currentTime;
+    var wasPaused = this.videoEl.paused;
+    var mediaContainer = document.getElementById('player-media');
+    var loadingEl = document.getElementById('player-loading');
+
+    if (loadingEl) {
+      loadingEl.style.display = 'flex';
+      var loadingText = loadingEl.querySelector('.player-loading-text');
+      if (loadingText) loadingText.textContent = 'Переключение...';
+    }
+
+    // Reusing the same <video> via src+load() for a new source silently
+    // dropped the audio track and left a stale/corrupt HLS session (garbage
+    // duration, black frame) on this TV's decoder -- recreate the element
+    // instead, mirroring the already-reliable initial-load path.
+    this.videoEl.pause();
+    this.videoEl.src = '';
+    if (mediaContainer) mediaContainer.innerHTML = '';
+
+    var video = document.createElement('video');
+    video.className = 'player-video';
+    video.id = 'player-video';
+    video.preload = 'auto';
+    video.setAttribute('playsinline', '');
+    video.src = url;
+    video.playbackRate = this.playbackSpeed;
+    this.videoEl = video;
+    if (mediaContainer) mediaContainer.appendChild(video);
+
+    this.setupVideoEvents(video);
 
     var onReady = function() {
       video.removeEventListener('loadedmetadata', onReady);
       video.currentTime = resumeTime;
+      if (loadingEl) loadingEl.style.display = 'none';
       if (!wasPaused) self.safePlay(video);
     };
     video.addEventListener('loadedmetadata', onReady);
-
-    var btn = document.getElementById('player-quality-btn');
-    if (btn) btn.textContent = this.qualities[index].quality + 'p';
   },
 
   formatSpeed: function(rate) {
