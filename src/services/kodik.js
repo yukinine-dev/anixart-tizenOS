@@ -32,13 +32,17 @@ var KodikParser = {
       if (keys.length === 0) throw { status: 0, text: 'Kodik: empty links' };
 
       keys.sort(function(a, b) { return parseInt(b, 10) - parseInt(a, 10); });
-      var quality = keys[0];
-      var src = data.links[quality][0].src;
 
-      var decoded = src.indexOf('//') === -1 ? self._decrypt(src) : src;
-      if (decoded.indexOf('http') !== 0) decoded = 'https:' + decoded;
+      var qualities = [];
+      for (var i = 0; i < keys.length; i++) {
+        var quality = keys[i];
+        var src = data.links[quality][0].src;
+        var decoded = src.indexOf('//') === -1 ? self._decrypt(src) : src;
+        if (decoded.indexOf('http') !== 0) decoded = 'https:' + decoded;
+        qualities.push({ quality: quality, url: decoded });
+      }
 
-      return decoded;
+      return qualities;
     });
   },
 

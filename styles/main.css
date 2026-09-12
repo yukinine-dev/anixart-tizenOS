@@ -657,6 +657,7 @@ input {
   width: 360px;
   height: 200px;
   position: relative;
+  border-radius: 12px;
   scroll-snap-align: start;
   transition: box-shadow 0.15s;
 }
@@ -711,6 +712,7 @@ input {
   padding-bottom: 8px;
   padding-left: 6px;
   padding-right: 6px;
+  border-radius: 12px;
   scroll-snap-align: start;
 }
 
@@ -1131,7 +1133,8 @@ input {
 .video-banner-row {
   display: flex;
   overflow-x: auto;
-  padding: 6px 0;
+  padding: 6px 6px;
+  margin: 0 -6px;
 }
 
 .video-banner-row > *:not(:first-child) {
@@ -1309,7 +1312,8 @@ input {
 .screenshot-row {
   display: flex;
   overflow-x: auto;
-  padding: 6px 0;
+  padding: 6px 6px;
+  margin: 0 -6px;
 }
 
 .screenshot-row > *:not(:first-child) {
@@ -1548,7 +1552,7 @@ input {
   padding: 0 40px 16px;
 }
 
-.voiceover-list-fullscreen {
+#voiceover-picker .voiceover-list-fullscreen {
   flex: 1;
   max-height: none;
   overflow-y: auto;
@@ -2084,9 +2088,16 @@ input {
   right: 0;
   bottom: 0;
   display: none;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   pointer-events: none;
+}
+
+.player-loading-text {
+  margin-top: 16px;
+  color: rgba(255,255,255,0.6);
+  font-size: 14px;
 }
 
 .player-center-controls {
@@ -2153,6 +2164,7 @@ input {
 
 .player-time-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   margin-top: 8px;
 }
@@ -2166,6 +2178,24 @@ input {
 .player-ep-indicator {
   color: rgba(255,255,255,0.5);
   font-size: 13px;
+}
+
+.player-quality-btn {
+  margin-left: auto;
+  height: 28px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.player-quality-list {
+  width: 220px;
 }
 
 .player-overlay {
@@ -3021,6 +3051,7 @@ input {
 .player-ep-list-btn.focused,
 .player-ctrl-btn.focused,
 .player-play-btn.focused,
+.player-quality-btn.focused,
 .search-back-btn.focused,
 .search-clear-btn.focused {
   box-shadow: 0 0 0 3px #f04e5c;

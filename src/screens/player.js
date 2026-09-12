@@ -8,6 +8,8 @@ var PlayerScreen = {
   controlsTimeout: null,
   saveInterval: null,
   loadToken: 0,
+  qualities: [],
+  currentQualityIndex: 0,
 
   render: function(params) {
     var container = document.getElementById('app');
@@ -36,7 +38,7 @@ var PlayerScreen = {
     var loading = document.createElement('div');
     loading.className = 'player-loading';
     loading.id = 'player-loading';
-    loading.innerHTML = '<div class="spinner"></div>';
+    loading.innerHTML = '<div class="spinner"></div><div class="player-loading-text">Получение потока...</div>';
     playerWrap.appendChild(loading);
 
     var overlay = document.createElement('div');
@@ -119,17 +121,23 @@ var PlayerScreen = {
 
     this.teardownMedia();
     var loadingEl = document.getElementById('player-loading');
-    if (loadingEl) loadingEl.style.display = 'flex';
+    if (loadingEl) {
+      loadingEl.style.display = 'flex';
+      var loadingText = loadingEl.querySelector('.player-loading-text');
+      if (loadingText) loadingText.textContent = 'Получение потока...';
+    }
 
     if (this.releaseId && typeof WatchHistory !== 'undefined') {
       WatchHistory.save(this.releaseId, index, 0, 0);
     }
 
     if (ep.url && typeof KodikParser !== 'undefined' && KodikParser.isKodikUrl(ep.url)) {
-      KodikParser.resolve(ep.url).then(function(directUrl) {
+      KodikParser.resolve(ep.url).then(function(qualities) {
         if (myToken !== self.loadToken) return;
         try {
-          self.setupNativePlayer(directUrl);
+          self.qualities = qualities;
+          self.currentQualityIndex = 0;
+          self.setupNativePlayer(qualities[0].url);
           if (typeof Debug !== 'undefined') Debug.log('info', 'Player: Kodik resolved, using native player');
         } catch (e) {
           if (typeof Debug !== 'undefined') Debug.log('error', 'Player: native setup failed, falling back to iframe: ' + e.message);
@@ -152,10 +160,14 @@ var PlayerScreen = {
     if (mediaContainer) mediaContainer.innerHTML = '';
     this.videoEl = null;
     this.mode = null;
+    this.qualities = [];
+    this.currentQualityIndex = 0;
     var centerControls = document.getElementById('player-center-controls');
     if (centerControls) centerControls.innerHTML = '';
     var bottomBar = document.getElementById('player-bottom-bar');
     if (bottomBar) bottomBar.innerHTML = '';
+    var qualityList = document.getElementById('player-quality-list');
+    if (qualityList) qualityList.remove();
   },
 
   setupNativePlayer: function(url) {
@@ -286,6 +298,16 @@ var PlayerScreen = {
     timeDuration.textContent = '0:00';
     timeRow.appendChild(timeDuration);
 
+    if (this.qualities && this.qualities.length > 1) {
+      var qualityBtn = document.createElement('button');
+      qualityBtn.className = 'player-quality-btn';
+      qualityBtn.id = 'player-quality-btn';
+      qualityBtn.setAttribute('data-focusable', 'true');
+      qualityBtn.textContent = this.qualities[this.currentQualityIndex].quality + 'p';
+      qualityBtn.addEventListener('click', function() { PlayerScreen.showQualityList(); });
+      timeRow.appendChild(qualityBtn);
+    }
+
     bottomBar.appendChild(timeRow);
   },
 
@@ -398,6 +420,75 @@ var PlayerScreen = {
     }, 50);
   },
 
+  showQualityList: function() {
+    var existing = document.getElementById('player-quality-list');
+    if (existing) { existing.remove(); return; }
+    if (!this.qualities || this.qualities.length < 2) return;
+
+    var panel = document.createElement('div');
+    panel.className = 'player-ep-list player-quality-list';
+    panel.id = 'player-quality-list';
+
+    var panelTitle = document.createElement('div');
+    panelTitle.className = 'player-ep-list-title';
+    panelTitle.textContent = 'Качество';
+    panel.appendChild(panelTitle);
+
+    var list = document.createElement('div');
+    list.className = 'player-ep-list-scroll';
+
+    for (var i = 0; i < this.qualities.length; i++) {
+      var q = this.qualities[i];
+      var item = document.createElement('button');
+      item.className = 'player-ep-list-item' + (i === this.currentQualityIndex ? ' active' : '');
+      item.setAttribute('data-focusable', 'true');
+      item.textContent = q.quality + 'p';
+
+      (function(idx) {
+        item.addEventListener('click', function() {
+          PlayerScreen.switchQuality(idx);
+          var panel = document.getElementById('player-quality-list');
+          if (panel) panel.remove();
+          PlayerScreen.showControls();
+        });
+      })(i);
+
+      list.appendChild(item);
+    }
+
+    panel.appendChild(list);
+
+    var wrap = document.getElementById('player-wrap');
+    if (wrap) wrap.appendChild(panel);
+
+    setTimeout(function() {
+      var activeItem = panel.querySelector('.player-ep-list-item.active');
+      if (activeItem) FocusManager.setFocus(activeItem);
+    }, 50);
+  },
+
+  switchQuality: function(index) {
+    if (!this.qualities || !this.qualities[index] || !this.videoEl) return;
+    this.currentQualityIndex = index;
+    var video = this.videoEl;
+    var resumeTime = video.currentTime;
+    var wasPaused = video.paused;
+    var self = this;
+
+    video.src = this.qualities[index].url;
+    video.load();
+
+    var onReady = function() {
+      video.removeEventListener('loadedmetadata', onReady);
+      video.currentTime = resumeTime;
+      if (!wasPaused) self.safePlay(video);
+    };
+    video.addEventListener('loadedmetadata', onReady);
+
+    var btn = document.getElementById('player-quality-btn');
+    if (btn) btn.textContent = this.qualities[index].quality + 'p';
+  },
+
   togglePlay: function() {
     if (!this.videoEl) return;
     if (this.videoEl.paused) {
@@ -426,7 +517,8 @@ var PlayerScreen = {
 
   showControls: function() {
     var epList = document.getElementById('player-ep-list');
-    if (epList) return;
+    var qualityList = document.getElementById('player-quality-list');
+    if (epList || qualityList) return;
 
     var overlay = document.getElementById('player-overlay');
     if (overlay) overlay.classList.add('visible');
@@ -457,6 +549,7 @@ var PlayerScreen = {
 
   handleKey: function(keyCode) {
     var epList = document.getElementById('player-ep-list');
+    var qualityList = document.getElementById('player-quality-list');
 
     switch (keyCode) {
       case 415: // Play
@@ -473,13 +566,14 @@ var PlayerScreen = {
         if (this.mode === 'native') { this.seek(-30); return true; }
         break;
       case 37: // Left
-        if (!epList && this.mode === 'native') { this.seek(-10); return true; }
+        if (!epList && !qualityList && this.mode === 'native') { this.seek(-10); return true; }
         break;
       case 39: // Right
-        if (!epList && this.mode === 'native') { this.seek(10); return true; }
+        if (!epList && !qualityList && this.mode === 'native') { this.seek(10); return true; }
         break;
       case 10009: // Back (Tizen)
       case 8:     // Backspace
+        if (qualityList) { qualityList.remove(); return true; }
         if (epList) { epList.remove(); return true; }
         break;
     }
