@@ -5,7 +5,6 @@ var Debug = {
   filter: 'all',
   panelEl: null,
   listEl: null,
-  counterEl: null,
 
   LEVELS: {
     info: { label: 'INFO', color: '#6979ce' },
@@ -32,15 +31,6 @@ var Debug = {
     this.logs.push(entry);
     if (this.logs.length > this.MAX_LOGS) {
       this.logs.shift();
-    }
-
-    if (this.counterEl) {
-      var errors = 0;
-      for (var i = 0; i < this.logs.length; i++) {
-        if (this.logs[i].level === 'error') errors++;
-      }
-      this.counterEl.textContent = errors > 0 ? errors : '';
-      this.counterEl.style.display = errors > 0 ? 'flex' : 'none';
     }
 
     if (this.visible && this.listEl) {
@@ -158,13 +148,6 @@ var Debug = {
     this.panelEl = panel;
     this.listEl = list;
     document.body.appendChild(panel);
-
-    var badge = document.createElement('div');
-    badge.id = 'debug-badge';
-    badge.className = 'debug-badge';
-    badge.style.display = 'none';
-    this.counterEl = badge;
-    document.body.appendChild(badge);
   },
 
   toggle: function() {
@@ -189,10 +172,6 @@ var Debug = {
   clear: function() {
     this.logs = [];
     if (this.listEl) this.listEl.innerHTML = '';
-    if (this.counterEl) {
-      this.counterEl.textContent = '';
-      this.counterEl.style.display = 'none';
-    }
     this.log('info', 'Logs cleared');
   },
 

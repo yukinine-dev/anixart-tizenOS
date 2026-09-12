@@ -36,11 +36,11 @@ var FocusManager = {
     }
 
     if (this.isInputActive()) {
-      if (keyCode === 38 || keyCode === 40) {
+      if (keyCode === 40) {
         e.preventDefault();
         document.activeElement.blur();
         document.body.focus();
-        this.moveFocus(keyCode === 38 ? 'up' : 'down');
+        this.moveFocus('down');
         return;
       }
       if (keyCode === 10009) {
@@ -76,7 +76,7 @@ var FocusManager = {
       case 10009: // Back (Tizen)
       case 8:     // Backspace
         e.preventDefault();
-        var popup = document.getElementById('exit-dialog') || document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('player-ep-list');
+        var popup = document.getElementById('exit-dialog') || document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-ep-list');
         if (popup) {
           if (popup.closeDialog) popup.closeDialog();
           else popup.remove();
@@ -122,31 +122,31 @@ var FocusManager = {
   },
 
   scrollIntoViewSmart: function(el) {
+    // Element.scrollTo()/scrollBy() aren't implemented on this TV's WebKit --
+    // setting scrollTop/scrollLeft directly is the form it actually supports.
     var scrollContainer = el.closest('.section-scroll');
     if (scrollContainer) {
       var elRect = el.getBoundingClientRect();
       var contRect = scrollContainer.getBoundingClientRect();
       if (elRect.left < contRect.left || elRect.right > contRect.right) {
-        var scrollLeft = el.offsetLeft - scrollContainer.offsetLeft - 16;
-        scrollContainer.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+        scrollContainer.scrollLeft = el.offsetLeft - scrollContainer.offsetLeft - 16;
       }
     }
 
     var mainScroll = document.getElementById('main-scroll');
     if (mainScroll) {
-      var elRect = el.getBoundingClientRect();
+      var elRect2 = el.getBoundingClientRect();
       var viewHeight = window.innerHeight;
       var navHeight = 72;
-      if (elRect.bottom > viewHeight - navHeight || elRect.top < 0) {
-        var scrollTop = el.offsetTop - mainScroll.offsetTop - 100;
-        mainScroll.scrollTo({ top: scrollTop, behavior: 'smooth' });
+      if (elRect2.bottom > viewHeight - navHeight || elRect2.top < 0) {
+        mainScroll.scrollTop = el.offsetTop - mainScroll.offsetTop - 100;
       }
     }
   },
 
   getFocusables: function(container) {
     if (!container) {
-      var dialog = document.getElementById('exit-dialog');
+      var dialog = document.getElementById('exit-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer');
       container = dialog || document.getElementById('app');
     }
     if (!container) return [];
@@ -173,9 +173,24 @@ var FocusManager = {
     var currentRect = current.getBoundingClientRect();
     var cx = currentRect.left + currentRect.width / 2;
     var cy = currentRect.top + currentRect.height / 2;
+    var horizontal = (direction === 'left' || direction === 'right');
+    var sign = (direction === 'right' || direction === 'down') ? 1 : -1;
 
     var best = null;
     var bestScore = Infinity;
+    // Candidates whose perpendicular range overlaps the current element's
+    // (same row for left/right, same column for up/down) are preferred over
+    // the raw nearest-center match. Without this, a very wide element (like
+    // the full-width search bar) can have its center closer to a card in the
+    // row below than to a button sitting right next to it in its own row.
+    var ahead = null;
+    var aheadScore = Infinity;
+    // If nothing lies ahead in the same row, wrap to the far end of that row
+    // instead of falling through to unrelated content elsewhere on the
+    // screen (e.g. pressing right past the last toolbar icon should cycle
+    // back to the search bar, not jump down into a content carousel).
+    var wrapTarget = null;
+    var wrapExtreme = -Infinity;
 
     for (var i = 0; i < focusables.length; i++) {
       var el = focusables[i];
@@ -188,44 +203,48 @@ var FocusManager = {
 
       var dx = ex - cx;
       var dy = ey - cy;
+      var signedPrimary = horizontal ? dx : dy;
+      var primary = Math.abs(signedPrimary);
+      var secondary = horizontal ? Math.abs(dy) : Math.abs(dx);
+      var valid = signedPrimary * sign > 5;
 
-      var valid = false;
-      var primary, secondary;
-
-      switch (direction) {
-        case 'left':
-          valid = dx < -5;
-          primary = Math.abs(dx);
-          secondary = Math.abs(dy);
-          break;
-        case 'right':
-          valid = dx > 5;
-          primary = Math.abs(dx);
-          secondary = Math.abs(dy);
-          break;
-        case 'up':
-          valid = dy < -5;
-          primary = Math.abs(dy);
-          secondary = Math.abs(dx);
-          break;
-        case 'down':
-          valid = dy > 5;
-          primary = Math.abs(dy);
-          secondary = Math.abs(dx);
-          break;
+      var overlaps;
+      if (horizontal) {
+        overlaps = Math.min(currentRect.top + currentRect.height, rect.top + rect.height) - Math.max(currentRect.top, rect.top) > 0;
+      } else {
+        overlaps = Math.min(currentRect.left + currentRect.width, rect.left + rect.width) - Math.max(currentRect.left, rect.left) > 0;
       }
 
-      if (!valid) continue;
-
-      var score = secondary * 3 + primary;
-      if (score < bestScore) {
-        bestScore = score;
-        best = el;
+      if (valid) {
+        var score = secondary * 3 + primary;
+        if (score < bestScore) {
+          bestScore = score;
+          best = el;
+        }
+        if (overlaps && primary < aheadScore) {
+          aheadScore = primary;
+          ahead = el;
+        }
+      } else if (overlaps) {
+        var behindExtreme = -signedPrimary * sign;
+        if (behindExtreme > wrapExtreme) {
+          wrapExtreme = behindExtreme;
+          wrapTarget = el;
+        }
       }
     }
 
-    if (best) {
-      this.setFocus(best);
+    var winner = ahead || (horizontal ? wrapTarget : null) || best;
+    if (winner) {
+      this.setFocus(winner);
+    } else if (direction === 'up' || direction === 'down') {
+      // Nothing focusable further in that direction (e.g. static content
+      // like descriptions, ratings, comments) -- scroll the page manually
+      // so it stays reachable with a D-pad instead of getting stuck.
+      var scrollEl = document.getElementById('main-scroll');
+      if (scrollEl) {
+        scrollEl.scrollTop += (direction === 'down' ? 300 : -300);
+      }
     }
   },
 

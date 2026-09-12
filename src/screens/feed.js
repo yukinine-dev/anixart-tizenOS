@@ -189,15 +189,19 @@ var FeedScreen = {
     card.className = 'feed-card';
     card.setAttribute('data-focusable', 'true');
 
+    var inner = document.createElement('div');
+    inner.className = 'feed-card-inner';
+    card.appendChild(inner);
+
     var poster = document.createElement('div');
     poster.className = 'feed-card-poster';
     var img = document.createElement('img');
     img.src = release.image || release.poster || '';
     img.alt = release.title_ru || release.title || '';
     img.loading = 'lazy';
-    img.onerror = function() { this.style.background = 'var(--color-surface)'; };
+    img.onerror = function() { this.style.background = '#252525'; };
     poster.appendChild(img);
-    card.appendChild(poster);
+    inner.appendChild(poster);
 
     var info = document.createElement('div');
     info.className = 'feed-card-info';
@@ -215,7 +219,7 @@ var FeedScreen = {
     meta.textContent = parts.join(' · ');
     info.appendChild(meta);
 
-    card.appendChild(info);
+    inner.appendChild(info);
 
     card.addEventListener('click', function() {
       App.showScreen('details', { releaseId: release.id });

@@ -40,7 +40,13 @@ var SearchScreen = {
     input.className = 'search-input-field';
     input.placeholder = 'Поиск аниме...';
     input.setAttribute('data-focusable', 'true');
-    input.addEventListener('focus', function() { FocusManager.setFocus(input); });
+    input.addEventListener('focus', function() {
+      FocusManager.setFocus(input);
+      inputWrap.classList.add('focused');
+    });
+    input.addEventListener('blur', function() {
+      inputWrap.classList.remove('focused');
+    });
     input.addEventListener('input', function() {
       SearchScreen.onInput(input.value);
     });
@@ -186,7 +192,7 @@ var SearchScreen = {
 
     container.appendChild(grid);
 
-    if (this.page === 0) {
+    if (this.page === 0 && !FocusManager.isInputActive()) {
       setTimeout(function() {
         var first = grid.querySelector('[data-focusable]');
         if (first) FocusManager.setFocus(first);
@@ -205,7 +211,7 @@ var SearchScreen = {
     img.src = release.image || release.poster || '';
     img.alt = release.title_ru || release.title || '';
     img.loading = 'lazy';
-    img.onerror = function() { this.style.background = 'var(--color-surface)'; };
+    img.onerror = function() { this.style.background = '#252525'; };
     posterWrap.appendChild(img);
 
     if (release.status_id) {

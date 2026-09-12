@@ -58,12 +58,18 @@ var HomeScreen = {
     settingsBtn.className = 'toolbar-btn';
     settingsBtn.setAttribute('data-focusable', 'true');
     settingsBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.611 3.611 0 0112 15.6z" fill="currentColor"/></svg>';
+    settingsBtn.addEventListener('click', function() {
+      App.showScreen('profile');
+    });
     actions.appendChild(settingsBtn);
 
     var notifBtn = document.createElement('button');
     notifBtn.className = 'toolbar-btn';
     notifBtn.setAttribute('data-focusable', 'true');
     notifBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 002 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z" fill="currentColor"/></svg>';
+    notifBtn.addEventListener('click', function() {
+      App.showScreen('feed');
+    });
     actions.appendChild(notifBtn);
 
     toolbar.appendChild(actions);
@@ -212,6 +218,9 @@ var HomeScreen = {
     card.setAttribute('data-focusable', 'true');
     card.setAttribute('data-release-id', releaseId || '');
 
+    var inner = document.createElement('div');
+    inner.className = 'interesting-card-inner';
+
     var img = document.createElement('img');
     img.className = 'interesting-poster';
     img.alt = item.title || '';
@@ -220,7 +229,7 @@ var HomeScreen = {
       img.src = item.image;
     }
     img.onerror = function() { this.style.display = 'none'; };
-    card.appendChild(img);
+    inner.appendChild(img);
 
     var overlay = document.createElement('div');
     overlay.className = 'interesting-overlay';
@@ -230,7 +239,8 @@ var HomeScreen = {
     title.textContent = item.title || '';
     overlay.appendChild(title);
 
-    card.appendChild(overlay);
+    inner.appendChild(overlay);
+    card.appendChild(inner);
 
     card.addEventListener('click', function() {
       App.showScreen('details', { releaseId: releaseId });
@@ -309,7 +319,7 @@ var HomeScreen = {
       img.src = release.poster;
     }
     img.onerror = function() {
-      this.style.background = 'var(--color-surface)';
+      this.style.background = '#252525';
     };
     posterWrap.appendChild(img);
 

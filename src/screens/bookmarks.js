@@ -211,7 +211,7 @@ var BookmarksScreen = {
     img.src = release.image || release.poster || '';
     img.alt = release.title_ru || release.title || '';
     img.loading = 'lazy';
-    img.onerror = function() { this.style.background = 'var(--color-surface)'; };
+    img.onerror = function() { this.style.background = '#252525'; };
     poster.appendChild(img);
 
     if (release.status_id) {

@@ -1,15 +1,13 @@
 var PlayerScreen = {
-  videoEl: null,
-  controlsTimeout: null,
-  controlsVisible: true,
   episodes: [],
   currentEpisodeIndex: 0,
   releaseTitle: '',
-  seeking: false,
-  seekStep: 10,
-
   releaseId: null,
+  videoEl: null,
+  mode: null,
+  controlsTimeout: null,
   saveInterval: null,
+  loadToken: 0,
 
   render: function(params) {
     var container = document.getElementById('app');
@@ -21,27 +19,28 @@ var PlayerScreen = {
     this.episodes = params.episodes || [];
     this.currentEpisodeIndex = params.episodeIndex || 0;
 
-    if (this.releaseId && typeof WatchHistory !== 'undefined') {
+    if (this.releaseId && typeof WatchHistory !== 'undefined' && params.episodeIndex == null) {
       var saved = WatchHistory.get(this.releaseId);
-      if (saved && params.episodeIndex == null) {
-        this.currentEpisodeIndex = saved.episodeIndex || 0;
-      }
+      if (saved) this.currentEpisodeIndex = saved.episodeIndex || 0;
     }
 
     var playerWrap = document.createElement('div');
     playerWrap.className = 'player-wrap';
     playerWrap.id = 'player-wrap';
 
-    var video = document.createElement('video');
-    video.className = 'player-video';
-    video.id = 'player-video';
-    video.autoplay = true;
-    video.setAttribute('playsinline', '');
-    this.videoEl = video;
-    playerWrap.appendChild(video);
+    var mediaContainer = document.createElement('div');
+    mediaContainer.className = 'player-media';
+    mediaContainer.id = 'player-media';
+    playerWrap.appendChild(mediaContainer);
+
+    var loading = document.createElement('div');
+    loading.className = 'player-loading';
+    loading.id = 'player-loading';
+    loading.innerHTML = '<div class="spinner"></div>';
+    playerWrap.appendChild(loading);
 
     var overlay = document.createElement('div');
-    overlay.className = 'player-overlay';
+    overlay.className = 'player-overlay visible';
     overlay.id = 'player-overlay';
 
     var topBar = document.createElement('div');
@@ -69,21 +68,150 @@ var PlayerScreen = {
 
     topBar.appendChild(titleWrap);
 
-    var epListBtn = document.createElement('button');
-    epListBtn.className = 'player-ep-list-btn';
-    epListBtn.setAttribute('data-focusable', 'true');
-    epListBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill="currentColor"/></svg>';
-    epListBtn.addEventListener('click', function() { PlayerScreen.showEpisodeList(); });
-    topBar.appendChild(epListBtn);
+    if (this.episodes.length > 1) {
+      var epListBtn = document.createElement('button');
+      epListBtn.className = 'player-ep-list-btn';
+      epListBtn.setAttribute('data-focusable', 'true');
+      epListBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill="currentColor"/></svg>';
+      epListBtn.addEventListener('click', function() { PlayerScreen.showEpisodeList(); });
+      topBar.appendChild(epListBtn);
+    }
 
     overlay.appendChild(topBar);
 
     var centerControls = document.createElement('div');
     centerControls.className = 'player-center-controls';
+    centerControls.id = 'player-center-controls';
+    overlay.appendChild(centerControls);
+
+    var bottomBar = document.createElement('div');
+    bottomBar.className = 'player-bottom-bar';
+    bottomBar.id = 'player-bottom-bar';
+    overlay.appendChild(bottomBar);
+
+    playerWrap.appendChild(overlay);
+    container.appendChild(playerWrap);
+
+    this.loadEpisode(this.currentEpisodeIndex);
+
+    setTimeout(function() {
+      FocusManager.setFocus(backBtn);
+    }, 200);
+
+    playerWrap.addEventListener('click', function(e) {
+      if (e.target === playerWrap || e.target === mediaContainer || e.target.id === 'player-overlay') {
+        PlayerScreen.showControls();
+      }
+    });
+  },
+
+  loadEpisode: function(index) {
+    if (!this.episodes[index]) return;
+    this.currentEpisodeIndex = index;
+    var ep = this.episodes[index];
+    var self = this;
+    var myToken = ++this.loadToken;
+
+    var titleEl = document.getElementById('player-ep-title');
+    if (titleEl) {
+      titleEl.textContent = ep.name || ('Эпизод ' + (ep.position != null ? ep.position : (index + 1)));
+    }
+
+    this.teardownMedia();
+    var loadingEl = document.getElementById('player-loading');
+    if (loadingEl) loadingEl.style.display = 'flex';
+
+    if (this.releaseId && typeof WatchHistory !== 'undefined') {
+      WatchHistory.save(this.releaseId, index, 0, 0);
+    }
+
+    if (ep.url && typeof KodikParser !== 'undefined' && KodikParser.isKodikUrl(ep.url)) {
+      KodikParser.resolve(ep.url).then(function(directUrl) {
+        if (myToken !== self.loadToken) return;
+        try {
+          self.setupNativePlayer(directUrl);
+          if (typeof Debug !== 'undefined') Debug.log('info', 'Player: Kodik resolved, using native player');
+        } catch (e) {
+          if (typeof Debug !== 'undefined') Debug.log('error', 'Player: native setup failed, falling back to iframe: ' + e.message);
+          self.teardownMedia();
+          self.setupIframePlayer(ep.url);
+        }
+      }, function(err) {
+        if (myToken !== self.loadToken) return;
+        if (typeof Debug !== 'undefined') Debug.log('warn', 'Player: Kodik parse failed (' + (err && err.text) + '), falling back to iframe');
+        self.setupIframePlayer(ep.url);
+      });
+    } else if (ep.url) {
+      this.setupIframePlayer(ep.url);
+    }
+  },
+
+  teardownMedia: function() {
+    this.stopSaveInterval();
+    var mediaContainer = document.getElementById('player-media');
+    if (mediaContainer) mediaContainer.innerHTML = '';
+    this.videoEl = null;
+    this.mode = null;
+    var centerControls = document.getElementById('player-center-controls');
+    if (centerControls) centerControls.innerHTML = '';
+    var bottomBar = document.getElementById('player-bottom-bar');
+    if (bottomBar) bottomBar.innerHTML = '';
+  },
+
+  setupNativePlayer: function(url) {
+    this.mode = 'native';
+    var mediaContainer = document.getElementById('player-media');
+    var loadingEl = document.getElementById('player-loading');
+
+    var video = document.createElement('video');
+    video.className = 'player-video';
+    video.id = 'player-video';
+    video.autoplay = true;
+    video.setAttribute('playsinline', '');
+    video.src = url;
+    this.videoEl = video;
+    mediaContainer.appendChild(video);
+
+    this.setupVideoEvents(video);
+    this.buildNativeControls();
+
+    this.safePlay(video);
+    if (loadingEl) loadingEl.style.display = 'none';
+  },
+
+  safePlay: function(video) {
+    // HTMLMediaElement.play() doesn't return a Promise on this TV's old
+    // WebKit -- it returns undefined, so calling .catch() on it unconditionally
+    // throws and (until this guard existed) silently broke native playback.
+    var playResult = video.play();
+    if (playResult && typeof playResult.catch === 'function') {
+      playResult.catch(function() {});
+    }
+  },
+
+  setupIframePlayer: function(url) {
+    this.mode = 'iframe';
+    var mediaContainer = document.getElementById('player-media');
+    var loadingEl = document.getElementById('player-loading');
+
+    var iframe = document.createElement('iframe');
+    iframe.className = 'player-iframe';
+    iframe.id = 'player-iframe';
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.setAttribute('allow', 'autoplay; fullscreen');
+    iframe.src = url;
+    mediaContainer.appendChild(iframe);
+
+    if (loadingEl) loadingEl.style.display = 'none';
+  },
+
+  buildNativeControls: function() {
+    var centerControls = document.getElementById('player-center-controls');
+    var bottomBar = document.getElementById('player-bottom-bar');
+    if (!centerControls || !bottomBar) return;
 
     var prevBtn = document.createElement('button');
     prevBtn.className = 'player-ctrl-btn';
-    prevBtn.id = 'player-prev-btn';
     prevBtn.setAttribute('data-focusable', 'true');
     prevBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" fill="currentColor"/></svg>';
     prevBtn.addEventListener('click', function() { PlayerScreen.prevEpisode(); });
@@ -113,16 +241,10 @@ var PlayerScreen = {
 
     var nextBtn = document.createElement('button');
     nextBtn.className = 'player-ctrl-btn';
-    nextBtn.id = 'player-next-btn';
     nextBtn.setAttribute('data-focusable', 'true');
     nextBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg>';
     nextBtn.addEventListener('click', function() { PlayerScreen.nextEpisode(); });
     centerControls.appendChild(nextBtn);
-
-    overlay.appendChild(centerControls);
-
-    var bottomBar = document.createElement('div');
-    bottomBar.className = 'player-bottom-bar';
 
     var progress = document.createElement('div');
     progress.className = 'player-progress';
@@ -155,6 +277,7 @@ var PlayerScreen = {
     var epIndicator = document.createElement('span');
     epIndicator.className = 'player-ep-indicator';
     epIndicator.id = 'player-ep-indicator';
+    epIndicator.textContent = (this.currentEpisodeIndex + 1) + ' / ' + this.episodes.length;
     timeRow.appendChild(epIndicator);
 
     var timeDuration = document.createElement('span');
@@ -164,21 +287,6 @@ var PlayerScreen = {
     timeRow.appendChild(timeDuration);
 
     bottomBar.appendChild(timeRow);
-    overlay.appendChild(bottomBar);
-
-    playerWrap.appendChild(overlay);
-    container.appendChild(playerWrap);
-
-    this.setupVideoEvents(video);
-    this.loadEpisode(this.currentEpisodeIndex);
-    this.showControls();
-    this.updateEpIndicator();
-
-    playerWrap.addEventListener('click', function(e) {
-      if (e.target === playerWrap || e.target === video || e.target.id === 'player-overlay') {
-        PlayerScreen.showControls();
-      }
-    });
   },
 
   setupVideoEvents: function(video) {
@@ -224,38 +332,10 @@ var PlayerScreen = {
     });
   },
 
-  loadEpisode: function(index) {
-    if (!this.episodes[index]) return;
-    var ep = this.episodes[index];
-
-    var titleEl = document.getElementById('player-ep-title');
-    if (titleEl) {
-      titleEl.textContent = ep.name || ('Эпизод ' + (ep.position != null ? ep.position : (index + 1)));
-    }
-
-    var url = ep.url || ep.hls || '';
-    if (!url && ep.links && ep.links.length > 0) {
-      for (var i = 0; i < ep.links.length; i++) {
-        if (ep.links[i].hls) { url = ep.links[i].hls; break; }
-        if (ep.links[i].url) { url = ep.links[i].url; break; }
-      }
-    }
-
-    if (typeof Debug !== 'undefined') Debug.log('info', 'Player: loading ep ' + index + ' url=' + (url ? url.substring(0, 60) : 'none'));
-
-    if (url && this.videoEl) {
-      this.videoEl.src = url;
-      this.videoEl.play().catch(function() {});
-    }
-
-    this.updateEpIndicator();
-  },
-
   nextEpisode: function() {
     if (this.currentEpisodeIndex < this.episodes.length - 1) {
       this.saveProgress();
-      this.currentEpisodeIndex++;
-      this.loadEpisode(this.currentEpisodeIndex);
+      this.loadEpisode(this.currentEpisodeIndex + 1);
       this.showControls();
     }
   },
@@ -263,16 +343,8 @@ var PlayerScreen = {
   prevEpisode: function() {
     if (this.currentEpisodeIndex > 0) {
       this.saveProgress();
-      this.currentEpisodeIndex--;
-      this.loadEpisode(this.currentEpisodeIndex);
+      this.loadEpisode(this.currentEpisodeIndex - 1);
       this.showControls();
-    }
-  },
-
-  updateEpIndicator: function() {
-    var el = document.getElementById('player-ep-indicator');
-    if (el) {
-      el.textContent = (this.currentEpisodeIndex + 1) + ' / ' + this.episodes.length;
     }
   },
 
@@ -302,7 +374,6 @@ var PlayerScreen = {
       (function(idx) {
         item.addEventListener('click', function() {
           PlayerScreen.saveProgress();
-          PlayerScreen.currentEpisodeIndex = idx;
           PlayerScreen.loadEpisode(idx);
           var panel = document.getElementById('player-ep-list');
           if (panel) panel.remove();
@@ -330,7 +401,7 @@ var PlayerScreen = {
   togglePlay: function() {
     if (!this.videoEl) return;
     if (this.videoEl.paused) {
-      this.videoEl.play().catch(function() {});
+      this.safePlay(this.videoEl);
     } else {
       this.videoEl.pause();
     }
@@ -359,7 +430,6 @@ var PlayerScreen = {
 
     var overlay = document.getElementById('player-overlay');
     if (overlay) overlay.classList.add('visible');
-    this.controlsVisible = true;
 
     if (this.controlsTimeout) clearTimeout(this.controlsTimeout);
     var self = this;
@@ -369,10 +439,9 @@ var PlayerScreen = {
   },
 
   hideControls: function() {
-    if (this.videoEl && this.videoEl.paused) return;
+    if (this.mode === 'native' && this.videoEl && this.videoEl.paused) return;
     var overlay = document.getElementById('player-overlay');
     if (overlay) overlay.classList.remove('visible');
-    this.controlsVisible = false;
   },
 
   formatTime: function(s) {
@@ -392,22 +461,22 @@ var PlayerScreen = {
     switch (keyCode) {
       case 415: // Play
       case 10252: // PlayPause
-        this.togglePlay();
-        return true;
+        if (this.mode === 'native') { this.togglePlay(); return true; }
+        break;
       case 413: // Stop
         App.goBack();
         return true;
       case 417: // FastForward
-        this.seek(30);
-        return true;
+        if (this.mode === 'native') { this.seek(30); return true; }
+        break;
       case 412: // Rewind
-        this.seek(-30);
-        return true;
+        if (this.mode === 'native') { this.seek(-30); return true; }
+        break;
       case 37: // Left
-        if (!epList) { this.seek(-10); return true; }
+        if (!epList && this.mode === 'native') { this.seek(-10); return true; }
         break;
       case 39: // Right
-        if (!epList) { this.seek(10); return true; }
+        if (!epList && this.mode === 'native') { this.seek(10); return true; }
         break;
       case 10009: // Back (Tizen)
       case 8:     // Backspace
@@ -418,6 +487,7 @@ var PlayerScreen = {
   },
 
   saveProgress: function() {
+    if (this.mode !== 'native') return;
     if (!this.releaseId || !this.videoEl || typeof WatchHistory === 'undefined') return;
     if (!this.videoEl.duration || this.videoEl.duration < 1) return;
     WatchHistory.save(this.releaseId, this.currentEpisodeIndex, this.videoEl.currentTime, this.videoEl.duration);
@@ -439,12 +509,15 @@ var PlayerScreen = {
   },
 
   destroy: function() {
+    this.loadToken++;
     this.saveProgress();
     this.stopSaveInterval();
     if (this.videoEl) {
       this.videoEl.pause();
       this.videoEl.src = '';
     }
+    var mediaContainer = document.getElementById('player-media');
+    if (mediaContainer) mediaContainer.innerHTML = '';
     if (this.controlsTimeout) clearTimeout(this.controlsTimeout);
   }
 };
