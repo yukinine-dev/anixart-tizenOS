@@ -10,6 +10,9 @@ var PlayerScreen = {
   loadToken: 0,
   qualities: [],
   currentQualityIndex: 0,
+  playbackSpeed: 1,
+  speedOptions: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
+  OP_SKIP_SECONDS: 85,
 
   render: function(params) {
     var container = document.getElementById('app');
@@ -168,6 +171,8 @@ var PlayerScreen = {
     if (bottomBar) bottomBar.innerHTML = '';
     var qualityList = document.getElementById('player-quality-list');
     if (qualityList) qualityList.remove();
+    var speedList = document.getElementById('player-speed-list');
+    if (speedList) speedList.remove();
   },
 
   setupNativePlayer: function(url) {
@@ -181,6 +186,7 @@ var PlayerScreen = {
     video.autoplay = true;
     video.setAttribute('playsinline', '');
     video.src = url;
+    video.playbackRate = this.playbackSpeed;
     this.videoEl = video;
     mediaContainer.appendChild(video);
 
@@ -298,6 +304,17 @@ var PlayerScreen = {
     timeDuration.textContent = '0:00';
     timeRow.appendChild(timeDuration);
 
+    var extraControls = document.createElement('div');
+    extraControls.className = 'player-extra-controls';
+
+    var skipOpBtn = document.createElement('button');
+    skipOpBtn.className = 'player-skip-op-btn';
+    skipOpBtn.setAttribute('data-focusable', 'true');
+    skipOpBtn.title = 'Пропустить опенинг';
+    skipOpBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" fill="currentColor"/></svg>';
+    skipOpBtn.addEventListener('click', function() { PlayerScreen.seek(PlayerScreen.OP_SKIP_SECONDS); });
+    extraControls.appendChild(skipOpBtn);
+
     if (this.qualities && this.qualities.length > 1) {
       var qualityBtn = document.createElement('button');
       qualityBtn.className = 'player-quality-btn';
@@ -305,8 +322,18 @@ var PlayerScreen = {
       qualityBtn.setAttribute('data-focusable', 'true');
       qualityBtn.textContent = this.qualities[this.currentQualityIndex].quality + 'p';
       qualityBtn.addEventListener('click', function() { PlayerScreen.showQualityList(); });
-      timeRow.appendChild(qualityBtn);
+      extraControls.appendChild(qualityBtn);
     }
+
+    var speedBtn = document.createElement('button');
+    speedBtn.className = 'player-speed-btn';
+    speedBtn.id = 'player-speed-btn';
+    speedBtn.setAttribute('data-focusable', 'true');
+    speedBtn.textContent = this.formatSpeed(this.playbackSpeed);
+    speedBtn.addEventListener('click', function() { PlayerScreen.showSpeedList(); });
+    extraControls.appendChild(speedBtn);
+
+    timeRow.appendChild(extraControls);
 
     bottomBar.appendChild(timeRow);
   },
@@ -489,6 +516,64 @@ var PlayerScreen = {
     if (btn) btn.textContent = this.qualities[index].quality + 'p';
   },
 
+  formatSpeed: function(rate) {
+    return rate === 1 ? 'Обычная' : (rate + 'x');
+  },
+
+  showSpeedList: function() {
+    var existing = document.getElementById('player-speed-list');
+    if (existing) { existing.remove(); return; }
+
+    var self = this;
+    var panel = document.createElement('div');
+    panel.className = 'player-ep-list player-quality-list';
+    panel.id = 'player-speed-list';
+
+    var panelTitle = document.createElement('div');
+    panelTitle.className = 'player-ep-list-title';
+    panelTitle.textContent = 'Скорость';
+    panel.appendChild(panelTitle);
+
+    var list = document.createElement('div');
+    list.className = 'player-ep-list-scroll';
+
+    for (var i = 0; i < this.speedOptions.length; i++) {
+      var rate = this.speedOptions[i];
+      var item = document.createElement('button');
+      item.className = 'player-ep-list-item' + (rate === this.playbackSpeed ? ' active' : '');
+      item.setAttribute('data-focusable', 'true');
+      item.textContent = this.formatSpeed(rate);
+
+      (function(r) {
+        item.addEventListener('click', function() {
+          self.setPlaybackSpeed(r);
+          var panel = document.getElementById('player-speed-list');
+          if (panel) panel.remove();
+          self.showControls();
+        });
+      })(rate);
+
+      list.appendChild(item);
+    }
+
+    panel.appendChild(list);
+
+    var wrap = document.getElementById('player-wrap');
+    if (wrap) wrap.appendChild(panel);
+
+    setTimeout(function() {
+      var activeItem = panel.querySelector('.player-ep-list-item.active');
+      if (activeItem) FocusManager.setFocus(activeItem);
+    }, 50);
+  },
+
+  setPlaybackSpeed: function(rate) {
+    this.playbackSpeed = rate;
+    if (this.videoEl) this.videoEl.playbackRate = rate;
+    var btn = document.getElementById('player-speed-btn');
+    if (btn) btn.textContent = this.formatSpeed(rate);
+  },
+
   togglePlay: function() {
     if (!this.videoEl) return;
     if (this.videoEl.paused) {
@@ -518,7 +603,8 @@ var PlayerScreen = {
   showControls: function() {
     var epList = document.getElementById('player-ep-list');
     var qualityList = document.getElementById('player-quality-list');
-    if (epList || qualityList) return;
+    var speedList = document.getElementById('player-speed-list');
+    if (epList || qualityList || speedList) return;
 
     var overlay = document.getElementById('player-overlay');
     if (overlay) overlay.classList.add('visible');
@@ -550,6 +636,7 @@ var PlayerScreen = {
   handleKey: function(keyCode) {
     var epList = document.getElementById('player-ep-list');
     var qualityList = document.getElementById('player-quality-list');
+    var speedList = document.getElementById('player-speed-list');
 
     switch (keyCode) {
       case 415: // Play
@@ -566,13 +653,14 @@ var PlayerScreen = {
         if (this.mode === 'native') { this.seek(-30); return true; }
         break;
       case 37: // Left
-        if (!epList && !qualityList && this.mode === 'native') { this.seek(-10); return true; }
+        if (!epList && !qualityList && !speedList && this.mode === 'native') { this.seek(-10); return true; }
         break;
       case 39: // Right
-        if (!epList && !qualityList && this.mode === 'native') { this.seek(10); return true; }
+        if (!epList && !qualityList && !speedList && this.mode === 'native') { this.seek(10); return true; }
         break;
       case 10009: // Back (Tizen)
       case 8:     // Backspace
+        if (speedList) { speedList.remove(); return true; }
         if (qualityList) { qualityList.remove(); return true; }
         if (epList) { epList.remove(); return true; }
         break;

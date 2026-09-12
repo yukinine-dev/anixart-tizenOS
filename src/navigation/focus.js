@@ -146,7 +146,7 @@ var FocusManager = {
 
   getFocusables: function(container) {
     if (!container) {
-      var dialog = document.getElementById('exit-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-quality-list') || document.getElementById('player-ep-list');
+      var dialog = document.getElementById('exit-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-speed-list') || document.getElementById('player-quality-list') || document.getElementById('player-ep-list');
       container = dialog || document.getElementById('app');
     }
     if (!container) return [];

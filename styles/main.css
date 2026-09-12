@@ -2180,8 +2180,18 @@ input {
   font-size: 13px;
 }
 
-.player-quality-btn {
+.player-extra-controls {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.player-extra-controls > *:not(:first-child) {
+  margin-left: 8px;
+}
+
+.player-quality-btn,
+.player-speed-btn {
   height: 28px;
   padding: 0 14px;
   border: none;
@@ -2194,7 +2204,21 @@ input {
   transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
 }
 
-.player-quality-list {
+.player-skip-op-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: #ffffff;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.player-quality-list,
+.player-speed-list {
   width: 220px;
 }
 
@@ -3052,6 +3076,8 @@ input {
 .player-ctrl-btn.focused,
 .player-play-btn.focused,
 .player-quality-btn.focused,
+.player-speed-btn.focused,
+.player-skip-op-btn.focused,
 .search-back-btn.focused,
 .search-clear-btn.focused {
   box-shadow: 0 0 0 3px #f04e5c;
