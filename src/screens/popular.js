@@ -178,6 +178,9 @@ var PopularScreen = {
       desc.className = 'popular-desc';
       desc.textContent = release.description;
       info.appendChild(desc);
+      row.addEventListener('focus', function() {
+        PopularScreen.ensureFullDescription(release, desc);
+      });
     }
 
     row.appendChild(info);
@@ -187,5 +190,30 @@ var PopularScreen = {
     });
 
     return row;
+  },
+
+  descCache: {},
+
+  // /filter returns a shortened preview description, cut off mid-sentence
+  // with no ellipsis -- fetch the real one from /release only for the row
+  // actually in focus, instead of eagerly for the whole list.
+  ensureFullDescription: function(release, descEl) {
+    if (descEl.getAttribute('data-full-desc')) return;
+    descEl.setAttribute('data-full-desc', '1');
+
+    var cached = this.descCache[release.id];
+    if (cached) {
+      descEl.textContent = cached;
+      return;
+    }
+
+    var token = Storage.getToken();
+    ReleaseApi.getRelease(release.id, token).then(function(response) {
+      var full = (response.release || response).description;
+      if (full && full.length > descEl.textContent.length) {
+        PopularScreen.descCache[release.id] = full;
+        descEl.textContent = full;
+      }
+    }).catch(function() {});
   }
 };
