@@ -50,7 +50,7 @@ var BottomNav = {
         App.showScreen('home');
         break;
       case 'discover':
-        App.showScreen('search');
+        App.showScreen('discover');
         break;
       case 'bookmarks':
         App.showScreen('bookmarks');

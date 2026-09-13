@@ -56,6 +56,12 @@ var App = {
       case 'home':
         HomeScreen.render();
         break;
+      case 'discover':
+        DiscoverScreen.render();
+        break;
+      case 'release-list':
+        ReleaseListScreen.render(params);
+        break;
       case 'details':
         DetailsScreen.render(params);
         break;
@@ -94,6 +100,12 @@ var App = {
           break;
         case 'home':
           HomeScreen.render();
+          break;
+        case 'discover':
+          DiscoverScreen.render();
+          break;
+        case 'release-list':
+          ReleaseListScreen.render(prev.params);
           break;
         case 'details':
           DetailsScreen.render(prev.params);
