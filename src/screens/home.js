@@ -76,7 +76,12 @@ var HomeScreen = {
     var bottomNav = BottomNav.render('home');
     container.appendChild(bottomNav);
 
-    this.renderMyTab(content);
+    if (this.hasMyTabFilter()) {
+      content.appendChild(this.createSkeleton());
+      this.loadPage();
+    } else {
+      this.renderMyTab(content);
+    }
   },
 
   switchTab: function(tabId) {
@@ -93,7 +98,7 @@ var HomeScreen = {
     var content = document.getElementById('home-content');
     content.innerHTML = '';
 
-    if (tabId === 'my') {
+    if (tabId === 'my' && !this.hasMyTabFilter()) {
       this.renderMyTab(content);
       return;
     }
@@ -103,6 +108,7 @@ var HomeScreen = {
   },
 
   renderMyTab: function(content) {
+    var self = this;
     var empty = document.createElement('div');
     empty.className = 'home-my-tab-empty';
 
@@ -125,6 +131,7 @@ var HomeScreen = {
     configureBtn.className = 'home-my-tab-btn';
     configureBtn.setAttribute('data-focusable', 'true');
     configureBtn.textContent = 'Настроить';
+    configureBtn.addEventListener('click', function() { App.showScreen('tab-settings'); });
     empty.appendChild(configureBtn);
 
     content.appendChild(empty);
@@ -138,6 +145,21 @@ var HomeScreen = {
       this.page++;
       this.loadPage();
     }
+  },
+
+  hasMyTabFilter: function() {
+    var f = Storage.getMyTabFilter();
+    if (!f) return false;
+    for (var key in this.FILTER_DEFAULT) {
+      var def = this.FILTER_DEFAULT[key];
+      var val = f[key];
+      if (Array.isArray(def)) {
+        if (val && val.length > 0) return true;
+      } else if (val !== def) {
+        return true;
+      }
+    }
+    return false;
   },
 
   getTab: function(tabId) {
@@ -155,10 +177,15 @@ var HomeScreen = {
     if (!content) return;
     if (this.page === 0) content.innerHTML = '';
 
-    var tab = this.getTab(this.currentTab);
-    var body = {};
-    for (var key in this.FILTER_DEFAULT) { body[key] = this.FILTER_DEFAULT[key]; }
-    for (var key2 in tab.filter) { body[key2] = tab.filter[key2]; }
+    var body;
+    if (this.currentTab === 'my') {
+      body = Storage.getMyTabFilter() || this.FILTER_DEFAULT;
+    } else {
+      var tab = this.getTab(this.currentTab);
+      body = {};
+      for (var key in this.FILTER_DEFAULT) { body[key] = this.FILTER_DEFAULT[key]; }
+      for (var key2 in tab.filter) { body[key2] = tab.filter[key2]; }
+    }
 
     var token = Storage.getToken();
     var self = this;

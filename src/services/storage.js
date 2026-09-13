@@ -3,6 +3,7 @@ var Storage = {
   TOKEN_ID_KEY: 'anixart_token_id',
   PROFILE_KEY: 'anixart_profile',
   THEME_KEY: 'anixart_theme',
+  MY_TAB_FILTER_KEY: 'anixart_my_tab_filter',
 
   setToken: function(token) {
     localStorage.setItem(this.TOKEN_KEY, token);
@@ -36,6 +37,19 @@ var Storage = {
 
   setTheme: function(theme) {
     localStorage.setItem(this.THEME_KEY, theme);
+  },
+
+  getMyTabFilter: function() {
+    var val = localStorage.getItem(this.MY_TAB_FILTER_KEY);
+    return val ? JSON.parse(val) : null;
+  },
+
+  setMyTabFilter: function(filter) {
+    localStorage.setItem(this.MY_TAB_FILTER_KEY, JSON.stringify(filter));
+  },
+
+  clearMyTabFilter: function() {
+    localStorage.removeItem(this.MY_TAB_FILTER_KEY);
   },
 
   isLoggedIn: function() {

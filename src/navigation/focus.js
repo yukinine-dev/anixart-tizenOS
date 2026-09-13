@@ -76,7 +76,7 @@ var FocusManager = {
       case 10009: // Back (Tizen)
       case 8:     // Backspace
         e.preventDefault();
-        var popup = document.getElementById('exit-dialog') || document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-ep-list');
+        var popup = document.getElementById('exit-dialog') || document.getElementById('tab-settings-picker') || document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-ep-list');
         if (popup) {
           if (popup.closeDialog) popup.closeDialog();
           else popup.remove();
