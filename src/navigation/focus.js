@@ -196,6 +196,8 @@ var FocusManager = {
     // row below than to a button sitting right next to it in its own row.
     var ahead = null;
     var aheadScore = Infinity;
+    var aheadSecondary = Infinity;
+    var aheadActive = false;
     // If nothing lies ahead in the same row, wrap to the far end of that row
     // instead of falling through to unrelated content elsewhere on the
     // screen (e.g. pressing right past the last toolbar icon should cycle
@@ -232,9 +234,29 @@ var FocusManager = {
           bestScore = score;
           best = el;
         }
-        if (overlaps && primary < aheadScore) {
-          aheadScore = primary;
-          ahead = el;
+        if (overlaps) {
+          // When several candidates lie at (nearly) the same distance --
+          // e.g. every button in a horizontal tab row sits at the same
+          // vertical distance from a full-width content row below it --
+          // plain nearest-distance always picked whichever came first in
+          // DOM order, ignoring which one was actually the active tab.
+          // Break such ties in favor of the .active element, then by
+          // closeness on the perpendicular axis.
+          var elActive = el.classList.contains('active');
+          var better;
+          if (primary < aheadScore - 1) {
+            better = true;
+          } else if (primary < aheadScore + 1) {
+            better = (elActive && !aheadActive) || (elActive === aheadActive && secondary < aheadSecondary);
+          } else {
+            better = false;
+          }
+          if (better) {
+            aheadScore = primary;
+            aheadSecondary = secondary;
+            aheadActive = elActive;
+            ahead = el;
+          }
         }
       } else if (overlaps) {
         var behindExtreme = -signedPrimary * sign;
