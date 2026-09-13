@@ -33,13 +33,26 @@ var KodikParser = {
 
       keys.sort(function(a, b) { return parseInt(b, 10) - parseInt(a, 10); });
 
+      var HLS_SUFFIX = ':hls:manifest.m3u8';
       var qualities = [];
       for (var i = 0; i < keys.length; i++) {
         var quality = keys[i];
         var src = data.links[quality][0].src;
         var decoded = src.indexOf('//') === -1 ? self._decrypt(src) : src;
         if (decoded.indexOf('http') !== 0) decoded = 'https:' + decoded;
-        qualities.push({ quality: quality, url: decoded });
+
+        // Kodik's "HLS" manifest is fake chunking of one underlying MP4 file
+        // (segments are literally "<file>.mp4:hls:seg-N.ts"). That same file
+        // is directly fetchable with Range support if we strip the HLS
+        // suffix, letting the native player do plain progressive playback
+        // instead of parsing/buffering a multi-segment playlist -- much
+        // faster to start. Falls back to the HLS url if that ever 404s.
+        var directUrl = null;
+        if (decoded.length > HLS_SUFFIX.length && decoded.slice(decoded.length - HLS_SUFFIX.length) === HLS_SUFFIX) {
+          directUrl = decoded.slice(0, decoded.length - HLS_SUFFIX.length);
+        }
+
+        qualities.push({ quality: quality, url: decoded, directUrl: directUrl });
       }
 
       return qualities;

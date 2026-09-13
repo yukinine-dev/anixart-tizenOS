@@ -24,5 +24,9 @@ var DiscoverApi = {
 
   getComments: function() {
     return ApiClient.post('discover/comments');
+  },
+
+  getCollections: function(page, token) {
+    return ApiClient.get('collection/all/' + page, { token: token });
   }
 };

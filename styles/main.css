@@ -575,6 +575,335 @@ input {
   padding-bottom: 24px;
 }
 
+.discover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 8px 32px 24px;
+}
+
+.discover-actions > * {
+  margin: 8px 12px 8px 0;
+}
+
+.discover-action-btn {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 26px;
+  background: #252525;
+  color: #e0e0e0;
+  border: none;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.discover-action-btn > *:not(:first-child) {
+  margin-left: 12px;
+}
+
+.discover-rec-empty {
+  margin: 0 32px 16px;
+  padding: 20px 24px;
+  background: #1e1e1e;
+  border-radius: 14px;
+  color: #757575;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.discover-rec-more-btn {
+  display: block;
+  margin-top: 16px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 22px;
+  background: #2c2c2c;
+  color: #9e9e9e;
+  border: none;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+/* ===== DISCOVER: OBSUJDAEMOE / DISCUSSING ===== */
+
+.discover-discussing-list {
+  padding: 0 32px 16px;
+}
+
+.discover-discussing-card {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #1e1e1e;
+  border-radius: 14px;
+  transition: box-shadow 0.15s ease-out;
+}
+
+.discover-discussing-poster {
+  flex-shrink: 0;
+  width: 72px;
+  height: 100px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #121212;
+}
+
+.discover-discussing-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.discover-discussing-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 16px;
+}
+
+.discover-discussing-info > *:not(:first-child) {
+  margin-top: 6px;
+}
+
+.discover-discussing-title {
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.discover-discussing-meta {
+  font-size: 13px;
+  color: #868686;
+}
+
+.discover-discussing-comments {
+  display: flex;
+  align-items: center;
+  color: #757575;
+  font-size: 13px;
+}
+
+.discover-discussing-comments svg {
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+/* ===== DISCOVER: SOCIAL ROW ===== */
+
+.discover-social-row {
+  display: flex;
+  padding: 8px 32px 24px;
+}
+
+.discover-social-row > *:not(:first-child) {
+  margin-left: 12px;
+}
+
+.discover-social-btn {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 24px;
+  background: #1e1e1e;
+  color: #9e9e9e;
+  border: none;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.discover-social-btn > *:not(:first-child) {
+  margin-left: 10px;
+}
+
+/* ===== DISCOVER: COLLECTIONS OF THE WEEK ===== */
+
+.discover-collections-scroll {
+  padding: 6px 32px;
+}
+
+.discover-collection-banner {
+  flex-shrink: 0;
+  width: 320px;
+  height: 180px;
+  border-radius: 14px;
+  position: relative;
+  transition: box-shadow 0.15s;
+}
+
+.discover-collection-banner-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  background: #1e1e1e;
+}
+
+.discover-collection-banner-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.discover-collection-badges {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+}
+
+.discover-collection-badges > *:not(:first-child) {
+  margin-left: 6px;
+}
+
+.discover-collection-badge {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.discover-collection-badge svg {
+  margin-right: 4px;
+}
+
+.discover-collection-title-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px 16px 14px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  color: #ffffff;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* ===== DISCOVER: COMMENTS OF THE WEEK ===== */
+
+.discover-comments-list {
+  padding: 0 32px 24px;
+}
+
+.discover-comment-card {
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #1e1e1e;
+  border-radius: 14px;
+  transition: box-shadow 0.15s ease-out;
+}
+
+.discover-comment-header {
+  display: flex;
+  align-items: center;
+}
+
+.discover-comment-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #252525;
+}
+
+.discover-comment-head-text {
+  margin-left: 12px;
+  min-width: 0;
+}
+
+.discover-comment-name {
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.discover-comment-to {
+  font-size: 13px;
+  color: #757575;
+}
+
+.discover-comment-release {
+  font-size: 13px;
+  color: #f04e5c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-comment-body {
+  margin-top: 12px;
+  color: #cfcfcf;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.discover-comment-spoiler {
+  text-align: center;
+  padding: 16px;
+  background: #252525;
+  border-radius: 10px;
+  color: #757575;
+}
+
+.discover-comment-reveal {
+  margin-top: 4px;
+  color: #f04e5c;
+  font-weight: 500;
+}
+
+.discover-comment-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #757575;
+}
+
+.discover-comment-vote {
+  background: rgba(115, 201, 120, 0.15);
+  color: #73c978;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+}
+
+.screen-release-list {
+  background: #121212;
+}
+
+.release-list-content {
+  position: absolute;
+  top: 64px;
+  left: 100px;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.release-list-content::-webkit-scrollbar {
+  display: none;
+}
+
 /* ===== SECTIONS ===== */
 
 .home-section {
@@ -2421,9 +2750,73 @@ input {
   outline: none !important;
 }
 
+.bookmarks-subtoolbar {
+  height: 56px;
+  margin-left: 100px;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.bookmarks-subtoolbar > *:not(:first-child) {
+  margin-left: 16px;
+}
+
+.bookmarks-count {
+  color: #9e9e9e;
+  font-size: 14px;
+}
+
+.bookmarks-sort-btn {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  background: #252525;
+  color: #9e9e9e;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 13px;
+  border: none;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.bookmarks-sort-btn > *:not(:first-child) {
+  margin-left: 8px;
+}
+
+.bookmarks-shuffle-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #252525;
+  color: #9e9e9e;
+  border: none;
+  transition: box-shadow 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+.bookmark-card-status-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 500;
+  text-align: center;
+  padding: 3px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .bookmarks-content {
   position: absolute;
-  top: calc(64px + 52px);
+  top: calc(64px + 52px + 56px);
   left: 100px;
   right: 0;
   bottom: 0;
@@ -3187,7 +3580,15 @@ input {
 .player-speed-btn.focused,
 .player-skip-op-btn.focused,
 .search-back-btn.focused,
-.search-clear-btn.focused {
+.search-clear-btn.focused,
+.bookmarks-sort-btn.focused,
+.bookmarks-shuffle-btn.focused,
+.discover-action-btn.focused,
+.discover-rec-more-btn.focused,
+.discover-discussing-card.focused,
+.discover-social-btn.focused,
+.discover-collection-banner.focused,
+.discover-comment-card.focused {
   box-shadow: 0 0 0 3px #f04e5c;
   outline: none !important;
 }

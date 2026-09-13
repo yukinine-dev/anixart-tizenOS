@@ -109,21 +109,12 @@ var HomeScreen = {
   },
 
   loadData: function() {
-    var token = Storage.getToken();
     var content = document.getElementById('home-content');
     var skeleton = document.getElementById('skeleton');
 
     var promises = [
       DiscoverApi.getInteresting().catch(function() { return null; })
     ];
-
-    if (token) {
-      promises.push(
-        DiscoverApi.getRecommendations(0, 0, token).catch(function() { return null; }),
-        DiscoverApi.getWatching(0, token).catch(function() { return null; }),
-        DiscoverApi.getDiscussing(token).catch(function() { return null; })
-      );
-    }
 
     if (typeof Debug !== 'undefined') Debug.log('info', 'Home: loading data (' + promises.length + ' requests)');
 
@@ -135,41 +126,6 @@ var HomeScreen = {
       if (interesting && interesting.content && interesting.content.length > 0) {
         var interestingSection = HomeScreen.createInterestingSection(interesting.content);
         content.appendChild(interestingSection);
-      }
-
-      if (token) {
-        var recommendations = results[1];
-        if (recommendations && recommendations.content && recommendations.content.length > 0) {
-          var recSection = HomeScreen.createReleaseSection(
-            'Рекомендации',
-            'На основе ваших оценок',
-            recommendations.content,
-            true
-          );
-          content.appendChild(recSection);
-        }
-
-        var watching = results[2];
-        if (watching && watching.content && watching.content.length > 0) {
-          var watchSection = HomeScreen.createReleaseSection(
-            'Смотрят сейчас',
-            null,
-            watching.content,
-            true
-          );
-          content.appendChild(watchSection);
-        }
-
-        var discussing = results[3];
-        if (discussing && discussing.content && discussing.content.length > 0) {
-          var discSection = HomeScreen.createReleaseSection(
-            'Обсуждаемое сегодня',
-            null,
-            discussing.content,
-            false
-          );
-          content.appendChild(discSection);
-        }
       }
 
       setTimeout(function() {
