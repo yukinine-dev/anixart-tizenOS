@@ -1,5 +1,39 @@
 var HomeScreen = {
+  FILTER_DEFAULT: {
+    country: null, season: null, sort: 0, source: null, studio: null,
+    age_ratings: [], category_id: null, end_year: null,
+    episode_duration_from: null, episode_duration_to: null,
+    episodes_from: null, episodes_to: null, genres: [],
+    is_genres_exclude_mode_enabled: false, profile_list_exclusions: [],
+    start_year: null, status_id: null, types: []
+  },
+
+  CATEGORY_TABS: [
+    { id: 'my', label: 'Моя вкладка' },
+    { id: 'anime', label: 'Аниме', filter: { country: 'Япония' } },
+    { id: 'donghua', label: 'Дунхуа', filter: { country: 'Китай' } },
+    { id: 'latest', label: 'Последнее', filter: {} },
+    { id: 'ongoing', label: 'Онгоинги', filter: { status_id: 2 } },
+    { id: 'announced', label: 'Анонсы', filter: { status_id: 3 } },
+    { id: 'finished', label: 'Завершенные', filter: { status_id: 1 } },
+    { id: 'films', label: 'Фильмы', filter: { category_id: 2 } },
+    { id: 'ova', label: 'OVA', filter: { category_id: 3 } }
+  ],
+
+  MONTHS: ['янв.', 'февр.', 'мар.', 'апр.', 'май', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'],
+
+  currentTab: 'my',
+  page: 0,
+  items: [],
+  loading: false,
+  hasMore: true,
+
   render: function() {
+    this.currentTab = 'my';
+    this.page = 0;
+    this.items = [];
+    this.hasMore = true;
+
     var container = document.getElementById('app');
     container.innerHTML = '';
     container.className = 'screen-home';
@@ -7,16 +41,34 @@ var HomeScreen = {
     var toolbar = this.createToolbar();
     container.appendChild(toolbar);
 
+    var tabsWrap = document.createElement('div');
+    tabsWrap.className = 'home-tabs';
+    tabsWrap.id = 'home-tabs';
+
+    for (var i = 0; i < this.CATEGORY_TABS.length; i++) {
+      var tab = this.CATEGORY_TABS[i];
+      var btn = document.createElement('button');
+      btn.className = 'home-tab' + (tab.id === this.currentTab ? ' active' : '');
+      btn.setAttribute('data-focusable', 'true');
+      btn.setAttribute('data-tab-id', tab.id);
+      btn.textContent = tab.label;
+      (function(tabId) {
+        btn.addEventListener('click', function() { HomeScreen.switchTab(tabId); });
+      })(tab.id);
+      tabsWrap.appendChild(btn);
+    }
+    container.appendChild(tabsWrap);
+
     var mainScroll = document.createElement('div');
     mainScroll.id = 'main-scroll';
-    mainScroll.className = 'main-scroll';
+    mainScroll.className = 'main-scroll home-main-scroll';
+    mainScroll.addEventListener('scroll', function() {
+      HomeScreen.onScroll(mainScroll);
+    });
 
     var content = document.createElement('div');
     content.className = 'home-content';
     content.id = 'home-content';
-
-    var skeleton = this.createSkeleton();
-    content.appendChild(skeleton);
 
     mainScroll.appendChild(content);
     container.appendChild(mainScroll);
@@ -24,7 +76,198 @@ var HomeScreen = {
     var bottomNav = BottomNav.render('home');
     container.appendChild(bottomNav);
 
-    this.loadData();
+    this.renderMyTab(content);
+  },
+
+  switchTab: function(tabId) {
+    this.currentTab = tabId;
+    this.page = 0;
+    this.items = [];
+    this.hasMore = true;
+
+    var tabs = document.querySelectorAll('#home-tabs .home-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('active', tabs[i].getAttribute('data-tab-id') === tabId);
+    }
+
+    var content = document.getElementById('home-content');
+    content.innerHTML = '';
+
+    if (tabId === 'my') {
+      this.renderMyTab(content);
+      return;
+    }
+
+    content.appendChild(this.createSkeleton());
+    this.loadPage();
+  },
+
+  renderMyTab: function(content) {
+    var empty = document.createElement('div');
+    empty.className = 'home-my-tab-empty';
+
+    var icon = document.createElement('div');
+    icon.className = 'home-my-tab-icon';
+    icon.innerHTML = '<svg width="72" height="72" viewBox="0 0 24 24"><path d="M3 5c0-1.1.9-2 2-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" fill="currentColor" opacity="0.25"/><path d="M3 5c0-1.1.9-2 2-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    empty.appendChild(icon);
+
+    var title = document.createElement('div');
+    title.className = 'home-my-tab-title';
+    title.textContent = 'Это ваша вкладка';
+    empty.appendChild(title);
+
+    var desc = document.createElement('div');
+    desc.className = 'home-my-tab-desc';
+    desc.textContent = 'Настройте её под себя и укажите, что хотели бы здесь видеть';
+    empty.appendChild(desc);
+
+    var configureBtn = document.createElement('button');
+    configureBtn.className = 'home-my-tab-btn';
+    configureBtn.setAttribute('data-focusable', 'true');
+    configureBtn.textContent = 'Настроить';
+    empty.appendChild(configureBtn);
+
+    content.appendChild(empty);
+
+    setTimeout(function() { FocusManager.setFocus(configureBtn); }, 100);
+  },
+
+  onScroll: function(container) {
+    if (this.currentTab === 'my' || this.loading || !this.hasMore) return;
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 300) {
+      this.page++;
+      this.loadPage();
+    }
+  },
+
+  getTab: function(tabId) {
+    for (var i = 0; i < this.CATEGORY_TABS.length; i++) {
+      if (this.CATEGORY_TABS[i].id === tabId) return this.CATEGORY_TABS[i];
+    }
+    return null;
+  },
+
+  loadPage: function() {
+    if (this.loading) return;
+    this.loading = true;
+
+    var content = document.getElementById('home-content');
+    if (!content) return;
+    if (this.page === 0) content.innerHTML = '';
+
+    var tab = this.getTab(this.currentTab);
+    var body = {};
+    for (var key in this.FILTER_DEFAULT) { body[key] = this.FILTER_DEFAULT[key]; }
+    for (var key2 in tab.filter) { body[key2] = tab.filter[key2]; }
+
+    var token = Storage.getToken();
+    var self = this;
+    var tabId = this.currentTab;
+
+    ApiClient.post('filter/' + this.page, { token: token, json: body }).then(function(response) {
+      self.loading = false;
+      if (tabId !== self.currentTab) return;
+
+      var items = response.content || [];
+      if (items.length === 0) {
+        self.hasMore = false;
+        if (self.page === 0) content.innerHTML = '<div class="bookmarks-empty">Пусто</div>';
+        return;
+      }
+
+      self.items = self.items.concat(items);
+      self.renderCatList();
+    }).catch(function(err) {
+      self.loading = false;
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Home: filter load failed', err);
+      if (tabId === self.currentTab && self.page === 0) {
+        content.innerHTML = '<div class="bookmarks-empty">Ошибка загрузки</div>';
+      }
+    });
+  },
+
+  renderCatList: function() {
+    var content = document.getElementById('home-content');
+    if (!content) return;
+    content.innerHTML = '';
+
+    var list = document.createElement('div');
+    list.className = 'popular-list home-cat-list';
+
+    for (var i = 0; i < this.items.length; i++) {
+      list.appendChild(this.createCatRow(this.items[i]));
+    }
+
+    content.appendChild(list);
+
+    setTimeout(function() {
+      var first = list.querySelector('[data-focusable]');
+      if (first) FocusManager.setFocus(first);
+    }, 100);
+  },
+
+  formatAiredDate: function(timestamp) {
+    var d = new Date(timestamp * 1000);
+    return d.getDate() + ' ' + this.MONTHS[d.getMonth()] + ' ' + d.getFullYear() + ' г.';
+  },
+
+  createCatRow: function(release) {
+    var row = document.createElement('div');
+    row.className = 'popular-row home-cat-row';
+    row.setAttribute('data-focusable', 'true');
+
+    var poster = document.createElement('div');
+    poster.className = 'popular-poster';
+    var img = document.createElement('img');
+    img.src = release.image || release.poster || '';
+    img.alt = release.title_ru || '';
+    img.loading = 'lazy';
+    poster.appendChild(img);
+    row.appendChild(poster);
+
+    var info = document.createElement('div');
+    info.className = 'popular-info';
+
+    var title = document.createElement('div');
+    title.className = 'popular-title';
+    title.textContent = release.title_ru || release.title || '';
+    info.appendChild(title);
+
+    var isAnnounced = release.status && release.status.id === 3;
+
+    var meta = document.createElement('div');
+    meta.className = 'popular-meta';
+    if (isAnnounced) {
+      meta.textContent = 'Анонс   ' + (release.episodes_total || '?') + ' эп';
+    } else {
+      var epText = release.episodes_released && release.episodes_total
+        ? release.episodes_released + ' из ' + release.episodes_total + ' эп'
+        : (release.episodes_total || '?') + ' эп';
+      meta.textContent = epText + (release.grade ? ' · ' + parseFloat(release.grade).toFixed(1).replace(/\.0$/, '') + ' ★' : '');
+    }
+    info.appendChild(meta);
+
+    if (isAnnounced && release.aired_on_date) {
+      var pill = document.createElement('div');
+      pill.className = 'home-cat-date-pill';
+      pill.textContent = this.formatAiredDate(release.aired_on_date);
+      info.appendChild(pill);
+    }
+
+    if (release.description) {
+      var desc = document.createElement('div');
+      desc.className = 'popular-desc';
+      desc.textContent = release.description;
+      info.appendChild(desc);
+    }
+
+    row.appendChild(info);
+
+    row.addEventListener('click', function() {
+      App.showScreen('details', { releaseId: release.id });
+    });
+
+    return row;
   },
 
   createToolbar: function() {
@@ -106,47 +349,6 @@ var HomeScreen = {
       skeleton.appendChild(section);
     }
     return skeleton;
-  },
-
-  loadData: function() {
-    var content = document.getElementById('home-content');
-    var skeleton = document.getElementById('skeleton');
-
-    var promises = [
-      DiscoverApi.getInteresting().catch(function() { return null; })
-    ];
-
-    if (typeof Debug !== 'undefined') Debug.log('info', 'Home: loading data (' + promises.length + ' requests)');
-
-    Promise.all(promises).then(function(results) {
-      if (typeof Debug !== 'undefined') Debug.log('info', 'Home: data loaded, rendering sections');
-      if (skeleton) skeleton.remove();
-
-      var interesting = results[0];
-      if (interesting && interesting.content && interesting.content.length > 0) {
-        var interestingSection = HomeScreen.createInterestingSection(interesting.content);
-        content.appendChild(interestingSection);
-      }
-
-      setTimeout(function() {
-        FocusManager.focusFirst(content);
-      }, 100);
-
-    }).catch(function(err) {
-      if (typeof Debug !== 'undefined') Debug.log('error', 'Home: data load failed', err);
-      if (skeleton) skeleton.remove();
-      var errorEl = document.createElement('div');
-      errorEl.className = 'error-state';
-      errorEl.textContent = 'Ошибка загрузки. Нажмите OK для повтора.';
-      errorEl.setAttribute('data-focusable', 'true');
-      errorEl.addEventListener('click', function() {
-        content.innerHTML = '';
-        var newSkeleton = HomeScreen.createSkeleton();
-        content.appendChild(newSkeleton);
-        HomeScreen.loadData();
-      });
-      content.appendChild(errorEl);
-    });
   },
 
   createInterestingSection: function(items) {
@@ -317,7 +519,7 @@ var HomeScreen = {
       }
       var grade = document.createElement('span');
       grade.className = 'release-grade';
-      grade.textContent = parseFloat(release.grade).toFixed(1);
+      grade.textContent = parseFloat(release.grade).toFixed(1).replace(/\.0$/, '');
       meta.appendChild(grade);
     }
 

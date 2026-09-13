@@ -217,7 +217,7 @@ var DiscoverScreen = {
     var epText = release.episodes_released && release.episodes_total
       ? release.episodes_released + ' из ' + release.episodes_total + ' эп'
       : (release.episodes_total || '?') + ' эп';
-    meta.textContent = epText + (release.grade ? ' · ' + parseFloat(release.grade).toFixed(1) + ' ★' : '');
+    meta.textContent = epText + (release.grade ? ' · ' + parseFloat(release.grade).toFixed(1).replace(/\.0$/, '') + ' ★' : '');
     info.appendChild(meta);
 
     if (release.comment_per_day_count) {

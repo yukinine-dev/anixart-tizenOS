@@ -571,6 +571,101 @@ input {
   display: none;
 }
 
+.home-main-scroll {
+  top: calc(64px + 52px);
+}
+
+.home-tabs {
+  position: absolute;
+  top: 64px;
+  left: 100px;
+  right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 6px 32px;
+  overflow-x: auto;
+  z-index: 1;
+}
+
+.home-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.home-tab {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: 18px;
+  background: #252525;
+  color: #9e9e9e;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  transition: background 0.2s, color 0.2s, box-shadow 0.15s ease-out;
+}
+
+.home-tab:not(:first-child) {
+  margin-left: 8px;
+}
+
+.home-tab.active {
+  background: #f04e5c;
+  color: #ffffff;
+}
+
+.home-my-tab-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 100px 40px 40px;
+}
+
+.home-my-tab-icon {
+  color: #757575;
+  margin-bottom: 24px;
+}
+
+.home-my-tab-title {
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.home-my-tab-desc {
+  margin-top: 12px;
+  max-width: 440px;
+  color: #9e9e9e;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.home-my-tab-btn {
+  margin-top: 28px;
+  height: 48px;
+  padding: 0 32px;
+  border-radius: 24px;
+  background: #e0e0e0;
+  color: #121212;
+  border: none;
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  transition: box-shadow 0.15s ease-out;
+}
+
+.home-cat-date-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: #2c2c2c;
+  color: #9e9e9e;
+  font-size: 13px;
+}
+
 .home-content {
   padding-bottom: 24px;
 }
@@ -2852,7 +2947,8 @@ input {
   color: #ffffff;
 }
 
-.bookmarks-tab.focused {
+.bookmarks-tab.focused,
+.home-tab.focused {
   transform: none;
   box-shadow: 0 0 0 2px #f04e5c;
   outline: none !important;
@@ -3703,7 +3799,8 @@ input {
 .discover-collection-banner.focused,
 .discover-comment-avatar-btn.focused,
 .discover-comment-main.focused,
-.popular-row.focused {
+.popular-row.focused,
+.home-my-tab-btn.focused {
   box-shadow: 0 0 0 3px #f04e5c;
   outline: none !important;
 }
