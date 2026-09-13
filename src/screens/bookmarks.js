@@ -1,16 +1,21 @@
 var BookmarksScreen = {
-  currentTab: 'watching',
+  currentTab: 'favorites',
   tabs: [
+    { id: 'favorites', label: 'Избранное' },
     { id: 'watching', label: 'Смотрю', status: 1 },
     { id: 'planned', label: 'В планах', status: 2 },
     { id: 'watched', label: 'Просмотрено', status: 3 },
     { id: 'delayed', label: 'Отложено', status: 4 },
     { id: 'dropped', label: 'Брошено', status: 5 }
   ],
+  STATUS_COLORS: { 1: '#73c978', 2: '#c373c9', 3: '#6979ce', 4: '#ffd468', 5: '#ff605b' },
+  STATUS_LABELS: { 1: 'Смотрю', 2: 'В планах', 3: 'Просмотрено', 4: 'Отложено', 5: 'Брошено' },
   items: [],
   page: 0,
   loading: false,
   hasMore: true,
+  totalCount: 0,
+  sortMode: 'added',
 
   render: function() {
     var container = document.getElementById('app');
@@ -52,6 +57,31 @@ var BookmarksScreen = {
       tabsWrap.appendChild(btn);
     }
     container.appendChild(tabsWrap);
+
+    var subToolbar = document.createElement('div');
+    subToolbar.className = 'bookmarks-subtoolbar';
+
+    var countEl = document.createElement('div');
+    countEl.className = 'bookmarks-count';
+    countEl.id = 'bookmarks-count';
+    subToolbar.appendChild(countEl);
+
+    var sortBtn = document.createElement('button');
+    sortBtn.className = 'bookmarks-sort-btn';
+    sortBtn.id = 'bookmarks-sort-btn';
+    sortBtn.setAttribute('data-focusable', 'true');
+    sortBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z" fill="currentColor"/></svg><span>' + (this.sortMode === 'alpha' ? 'По алфавиту' : 'По добавлению') + '</span>';
+    sortBtn.addEventListener('click', function() { BookmarksScreen.toggleSort(); });
+    subToolbar.appendChild(sortBtn);
+
+    var shuffleBtn = document.createElement('button');
+    shuffleBtn.className = 'bookmarks-shuffle-btn';
+    shuffleBtn.setAttribute('data-focusable', 'true');
+    shuffleBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" fill="currentColor"/></svg>';
+    shuffleBtn.addEventListener('click', function() { BookmarksScreen.shuffleItems(); });
+    subToolbar.appendChild(shuffleBtn);
+
+    container.appendChild(subToolbar);
 
     var content = document.createElement('div');
     content.className = 'bookmarks-content';
@@ -140,20 +170,32 @@ var BookmarksScreen = {
     }
 
     var token = Storage.getToken();
-    var profile = Storage.getProfile();
-    var profileId = profile ? (profile.id || profile.profile_id) : null;
-    var status = this.getStatusForTab(this.currentTab);
+    var self = this;
+    var request;
 
-    if (!profileId) {
-      content.innerHTML = '<div class="bookmarks-empty">Профиль не найден</div>';
-      this.loading = false;
-      return;
+    if (this.currentTab === 'favorites') {
+      request = ApiClient.get('favorite/all/' + this.page, { token: token });
+    } else {
+      var profile = Storage.getProfile();
+      var profileId = profile ? (profile.id || profile.profile_id) : null;
+      var status = this.getStatusForTab(this.currentTab);
+
+      if (!profileId) {
+        content.innerHTML = '<div class="bookmarks-empty">Профиль не найден</div>';
+        this.loading = false;
+        return;
+      }
+
+      request = ProfileApi.getList(profileId, status, this.page, token);
     }
 
-    var self = this;
-    ProfileApi.getList(profileId, status, this.page, token).then(function(response) {
+    request.then(function(response) {
       var items = response.content || [];
       self.loading = false;
+      self.totalCount = response.total_count || 0;
+
+      var countEl = document.getElementById('bookmarks-count');
+      if (countEl) countEl.textContent = self.totalCount + ' всего';
 
       if (items.length === 0 && self.page === 0) {
         content.innerHTML = '<div class="bookmarks-empty">Список пуст</div>';
@@ -177,6 +219,34 @@ var BookmarksScreen = {
     });
   },
 
+  toggleSort: function() {
+    this.sortMode = this.sortMode === 'alpha' ? 'added' : 'alpha';
+    var btn = document.getElementById('bookmarks-sort-btn');
+    if (btn) {
+      var span = btn.querySelector('span');
+      if (span) span.textContent = this.sortMode === 'alpha' ? 'По алфавиту' : 'По добавлению';
+    }
+    this.renderItems();
+  },
+
+  shuffleItems: function() {
+    for (var i = this.items.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = this.items[i];
+      this.items[i] = this.items[j];
+      this.items[j] = tmp;
+    }
+
+    this.sortMode = 'added';
+    var btn = document.getElementById('bookmarks-sort-btn');
+    if (btn) {
+      var span = btn.querySelector('span');
+      if (span) span.textContent = 'По добавлению';
+    }
+
+    this.renderItems();
+  },
+
   renderItems: function() {
     var content = document.getElementById('bookmarks-content');
     if (!content) return;
@@ -185,8 +255,16 @@ var BookmarksScreen = {
     var grid = document.createElement('div');
     grid.className = 'bookmarks-grid';
 
-    for (var i = 0; i < this.items.length; i++) {
-      var item = this.items[i];
+    var displayItems = this.items.slice();
+    if (this.sortMode === 'alpha') {
+      displayItems.sort(function(a, b) {
+        var ra = a.release || a, rb = b.release || b;
+        return (ra.title_ru || ra.title || '').localeCompare(rb.title_ru || rb.title || '', 'ru');
+      });
+    }
+
+    for (var i = 0; i < displayItems.length; i++) {
+      var item = displayItems[i];
       var release = item.release || item;
       var card = this.createCard(release);
       grid.appendChild(card);
@@ -214,14 +292,13 @@ var BookmarksScreen = {
     img.onerror = function() { this.style.background = '#252525'; };
     poster.appendChild(img);
 
-    if (release.status_id) {
-      var statusTexts = { 1: 'Онгоинг', 2: 'Вышел', 3: 'Анонс' };
-      if (statusTexts[release.status_id]) {
-        var badge = document.createElement('div');
-        badge.className = 'release-status';
-        badge.textContent = statusTexts[release.status_id];
-        poster.appendChild(badge);
-      }
+    var listStatus = release.profile_list_status || this.getStatusForTab(this.currentTab);
+    if (listStatus && this.STATUS_LABELS[listStatus]) {
+      var badge = document.createElement('div');
+      badge.className = 'bookmark-card-status-badge';
+      badge.style.background = this.STATUS_COLORS[listStatus];
+      badge.textContent = this.STATUS_LABELS[listStatus];
+      poster.appendChild(badge);
     }
     card.appendChild(poster);
 

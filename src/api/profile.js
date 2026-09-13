@@ -8,14 +8,14 @@ var ProfileApi = {
   },
 
   getProfile: function(profileId, token) {
-    return ApiClient.post('profile/' + profileId, { token: token });
+    return ApiClient.get('profile/' + profileId, { token: token });
   },
 
   getList: function(profileId, listType, page, token) {
     page = page || 0;
-    return ApiClient.post('profile/list/' + listType + '/' + page, {
+    return ApiClient.get('profile/list/all/' + profileId + '/' + listType + '/' + page, {
       token: token,
-      queryParams: { profile_id: profileId }
+      queryParams: { sort: 1 }
     });
   },
 
