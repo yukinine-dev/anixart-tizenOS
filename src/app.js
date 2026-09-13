@@ -62,6 +62,9 @@ var App = {
       case 'release-list':
         ReleaseListScreen.render(params);
         break;
+      case 'popular':
+        PopularScreen.render();
+        break;
       case 'details':
         DetailsScreen.render(params);
         break;
@@ -106,6 +109,9 @@ var App = {
           break;
         case 'release-list':
           ReleaseListScreen.render(prev.params);
+          break;
+        case 'popular':
+          PopularScreen.render();
           break;
         case 'details':
           DetailsScreen.render(prev.params);
