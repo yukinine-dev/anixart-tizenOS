@@ -140,7 +140,7 @@ var PlayerScreen = {
         try {
           self.qualities = qualities;
           self.currentQualityIndex = 0;
-          self.setupNativePlayer(qualities[0].url);
+          self.setupNativePlayer(qualities[0]);
           if (typeof Debug !== 'undefined') Debug.log('info', 'Player: Kodik resolved, using native player');
         } catch (e) {
           if (typeof Debug !== 'undefined') Debug.log('error', 'Player: native setup failed, falling back to iframe: ' + e.message);
@@ -175,7 +175,7 @@ var PlayerScreen = {
     if (speedList) speedList.remove();
   },
 
-  setupNativePlayer: function(url) {
+  setupNativePlayer: function(quality) {
     this.mode = 'native';
     var mediaContainer = document.getElementById('player-media');
     var loadingEl = document.getElementById('player-loading');
@@ -186,16 +186,64 @@ var PlayerScreen = {
     video.autoplay = true;
     video.preload = 'auto';
     video.setAttribute('playsinline', '');
-    video.src = url;
     video.playbackRate = this.playbackSpeed;
     this.videoEl = video;
     mediaContainer.appendChild(video);
 
     this.setupVideoEvents(video);
     this.buildNativeControls();
+    this.loadPlayableSrc(video, quality);
 
     this.safePlay(video);
     if (loadingEl) loadingEl.style.display = 'none';
+  },
+
+  // Kodik's direct progressive-MP4 url (see kodik.js) is sometimes much
+  // faster to start than the HLS playlist, but this CDN's edge routing is
+  // inconsistent -- on a bad edge it decode-errors outright after 15+
+  // seconds instead of just being slow. A fixed "try direct, then fall back"
+  // sequence would pay that failure cost on top of the HLS load. Instead we
+  // start the real element on HLS immediately (so the normal path is never
+  // delayed) while a throwaway probe element races the direct url in the
+  // background; if the probe gets there first, we swap the real element
+  // over to it before it has buffered much.
+  loadPlayableSrc: function(video, quality) {
+    if (!quality.directUrl) {
+      video.src = quality.url;
+      return;
+    }
+
+    var self = this;
+    var settled = false;
+    video.src = quality.url;
+
+    var probe = document.createElement('video');
+    probe.preload = 'auto';
+    probe.muted = true;
+
+    var cleanup = function() {
+      probe.removeEventListener('loadedmetadata', onProbeReady);
+      probe.removeEventListener('error', onProbeError);
+      probe.src = '';
+    };
+    var onProbeReady = function() {
+      if (settled || video.readyState >= 3) { cleanup(); return; }
+      settled = true;
+      cleanup();
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Player: direct MP4 won the race, switching');
+      video.src = quality.directUrl;
+      self.safePlay(video);
+    };
+    var onProbeError = function() {
+      settled = true;
+      cleanup();
+    };
+
+    probe.addEventListener('loadedmetadata', onProbeReady);
+    probe.addEventListener('error', onProbeError);
+    probe.src = quality.directUrl;
+
+    setTimeout(function() { if (!settled) { settled = true; cleanup(); } }, 6000);
   },
 
   safePlay: function(video) {
@@ -477,7 +525,6 @@ var PlayerScreen = {
           PlayerScreen.switchQuality(idx);
           var panel = document.getElementById('player-quality-list');
           if (panel) panel.remove();
-          PlayerScreen.showControls();
         });
       })(i);
 
@@ -498,13 +545,13 @@ var PlayerScreen = {
   switchQuality: function(index) {
     if (!this.qualities || !this.qualities[index] || !this.videoEl) return;
     this.currentQualityIndex = index;
-    this.switchSource(this.qualities[index].url);
+    this.switchSource(this.qualities[index]);
 
     var btn = document.getElementById('player-quality-btn');
     if (btn) btn.textContent = this.qualities[index].quality + 'p';
   },
 
-  switchSource: function(url) {
+  switchSource: function(quality) {
     if (!this.videoEl) return;
     var self = this;
     var resumeTime = this.videoEl.currentTime;
@@ -517,6 +564,13 @@ var PlayerScreen = {
       var loadingText = loadingEl.querySelector('.player-loading-text');
       if (loadingText) loadingText.textContent = 'Переключение...';
     }
+
+    // Hide the transport controls while switching -- they were rendering
+    // right on top of the loading spinner/text at the same height as the
+    // pause button.
+    var overlay = document.getElementById('player-overlay');
+    if (overlay) overlay.classList.remove('visible');
+    if (this.controlsTimeout) { clearTimeout(this.controlsTimeout); this.controlsTimeout = null; }
 
     // Reusing the same <video> via src+load() for a new source silently
     // dropped the audio track and left a stale/corrupt HLS session (garbage
@@ -531,18 +585,19 @@ var PlayerScreen = {
     video.id = 'player-video';
     video.preload = 'auto';
     video.setAttribute('playsinline', '');
-    video.src = url;
     video.playbackRate = this.playbackSpeed;
     this.videoEl = video;
     if (mediaContainer) mediaContainer.appendChild(video);
 
     this.setupVideoEvents(video);
+    this.loadPlayableSrc(video, quality);
 
     var onReady = function() {
       video.removeEventListener('loadedmetadata', onReady);
       video.currentTime = resumeTime;
       if (loadingEl) loadingEl.style.display = 'none';
       if (!wasPaused) self.safePlay(video);
+      self.showControls();
     };
     video.addEventListener('loadedmetadata', onReady);
   },
