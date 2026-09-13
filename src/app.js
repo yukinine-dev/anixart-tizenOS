@@ -81,7 +81,7 @@ var App = {
         FeedScreen.render();
         break;
       case 'profile':
-        ProfileScreen.render();
+        ProfileScreen.render(params);
         break;
     }
   },
@@ -129,7 +129,7 @@ var App = {
           FeedScreen.render();
           break;
         case 'profile':
-          ProfileScreen.render();
+          ProfileScreen.render(prev.params);
           break;
       }
     } else if (this.currentScreen !== 'home' && Storage.isLoggedIn()) {

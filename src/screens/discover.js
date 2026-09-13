@@ -337,18 +337,32 @@ var DiscoverScreen = {
 
   createCommentCard: function(comment) {
     var self = this;
+    // "release" on this endpoint is sometimes the full release object and
+    // sometimes just a bare numeric id -- normalize both before using it.
+    var releaseObj = (comment.release && typeof comment.release === 'object') ? comment.release : null;
+    var releaseId = releaseObj ? releaseObj.id : comment.release;
+
     var card = document.createElement('div');
     card.className = 'discover-comment-card';
-    card.setAttribute('data-focusable', 'true');
 
-    var header = document.createElement('div');
-    header.className = 'discover-comment-header';
-
+    var avatarBtn = document.createElement('button');
+    avatarBtn.className = 'discover-comment-avatar-btn';
+    avatarBtn.setAttribute('data-focusable', 'true');
     var avatar = document.createElement('img');
     avatar.className = 'discover-comment-avatar';
     avatar.src = (comment.profile && comment.profile.avatar) || '';
     avatar.alt = '';
-    header.appendChild(avatar);
+    avatarBtn.appendChild(avatar);
+    avatarBtn.addEventListener('click', function() {
+      if (comment.profile && comment.profile.id) {
+        App.showScreen('profile', { profileId: comment.profile.id });
+      }
+    });
+    card.appendChild(avatarBtn);
+
+    var main = document.createElement('button');
+    main.className = 'discover-comment-main';
+    main.setAttribute('data-focusable', 'true');
 
     var headText = document.createElement('div');
     headText.className = 'discover-comment-head-text';
@@ -366,11 +380,17 @@ var DiscoverScreen = {
 
     var releaseTitle = document.createElement('div');
     releaseTitle.className = 'discover-comment-release';
-    releaseTitle.textContent = (comment.release && comment.release.title_ru) || '';
+    releaseTitle.textContent = (releaseObj && releaseObj.title_ru) || '';
     headText.appendChild(releaseTitle);
+    main.appendChild(headText);
 
-    header.appendChild(headText);
-    card.appendChild(header);
+    if (!releaseTitle.textContent && releaseId) {
+      var token = Storage.getToken();
+      ReleaseApi.getRelease(releaseId, token).then(function(response) {
+        var r = response.release;
+        if (r && r.title_ru) releaseTitle.textContent = r.title_ru;
+      }).catch(function() {});
+    }
 
     var body = document.createElement('div');
     body.className = 'discover-comment-body';
@@ -381,35 +401,42 @@ var DiscoverScreen = {
     } else {
       body.textContent = comment.message;
     }
-    card.appendChild(body);
+    main.appendChild(body);
 
     var footer = document.createElement('div');
     footer.className = 'discover-comment-footer';
 
-    var date = document.createElement('span');
-    date.textContent = self.formatWeekCommentDate(comment.timestamp);
-    footer.appendChild(date);
+    var dateWrap = document.createElement('span');
+    dateWrap.className = 'discover-comment-date';
+    dateWrap.textContent = self.formatWeekCommentDate(comment.timestamp);
+    if (comment.is_edited) {
+      dateWrap.innerHTML += ' <svg width="13" height="13" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>';
+    }
+    footer.appendChild(dateWrap);
 
     var vote = document.createElement('span');
     vote.className = 'discover-comment-vote';
     vote.textContent = comment.vote_count || comment.vote || 0;
     footer.appendChild(vote);
 
-    card.appendChild(footer);
+    main.appendChild(footer);
 
-    // A D-pad card only has one focusable action, so reveal the spoiler on
-    // the first OK press and only navigate to the release on the next one,
-    // instead of the reference's separate tap zones.
-    card.addEventListener('click', function() {
+    // A D-pad card only has one focusable action per element, so reveal the
+    // spoiler on the first OK press and only navigate to the release on the
+    // next one, instead of the reference's separate tap zones. The avatar
+    // is its own focusable button going straight to the author's profile.
+    main.addEventListener('click', function() {
       if (comment.is_spoiler && body.classList.contains('discover-comment-spoiler')) {
         body.classList.remove('discover-comment-spoiler');
         body.textContent = comment.message;
         return;
       }
-      if (comment.release && comment.release.id) {
-        App.showScreen('details', { releaseId: comment.release.id });
+      if (releaseId) {
+        App.showScreen('details', { releaseId: releaseId });
       }
     });
+
+    card.appendChild(main);
 
     return card;
   }

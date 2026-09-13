@@ -1,7 +1,12 @@
 var ProfileScreen = {
   profileData: null,
+  viewedProfileId: null,
 
-  render: function() {
+  render: function(params) {
+    params = params || {};
+    var ownId = Storage.getTokenId();
+    this.viewedProfileId = (params.profileId && String(params.profileId) !== String(ownId)) ? params.profileId : null;
+
     var container = document.getElementById('app');
     container.innerHTML = '';
     container.className = 'screen-profile';
@@ -11,14 +16,30 @@ var ProfileScreen = {
       return;
     }
 
+    if (this.viewedProfileId) {
+      var toolbar = document.createElement('div');
+      toolbar.className = 'bookmarks-toolbar';
+
+      var backBtn = document.createElement('button');
+      backBtn.className = 'search-back-btn';
+      backBtn.setAttribute('data-focusable', 'true');
+      backBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>';
+      backBtn.addEventListener('click', function() { App.goBack(); });
+      toolbar.appendChild(backBtn);
+
+      container.appendChild(toolbar);
+    }
+
     var content = document.createElement('div');
-    content.className = 'profile-content';
+    content.className = 'profile-content' + (this.viewedProfileId ? ' profile-content-viewing' : '');
     content.id = 'profile-content';
     content.innerHTML = '<div class="profile-loading"><div class="spinner"></div></div>';
     container.appendChild(content);
 
-    var bottomNav = BottomNav.render('profile');
-    container.appendChild(bottomNav);
+    if (!this.viewedProfileId) {
+      var bottomNav = BottomNav.render('profile');
+      container.appendChild(bottomNav);
+    }
 
     this.loadProfile();
   },
@@ -54,33 +75,45 @@ var ProfileScreen = {
 
   loadProfile: function() {
     var token = Storage.getToken();
-    var profile = Storage.getProfile();
+    var self = this;
 
+    if (this.viewedProfileId) {
+      ProfileApi.getProfile(this.viewedProfileId, token).then(function(response) {
+        var prof = response.profile || response;
+        self.renderProfile(prof, false);
+      }).catch(function(err) {
+        if (typeof Debug !== 'undefined') Debug.log('error', 'Profile: load other failed', err);
+        var content = document.getElementById('profile-content');
+        if (content) content.innerHTML = '<div class="bookmarks-empty">Не удалось загрузить профиль</div>';
+      });
+      return;
+    }
+
+    var profile = Storage.getProfile();
     if (profile) {
       this.profileData = profile;
-      this.renderProfile(profile);
+      this.renderProfile(profile, true);
       return;
     }
 
     var tokenId = Storage.getTokenId();
     if (!tokenId) {
-      this.renderProfile({ login: 'Пользователь' });
+      this.renderProfile({ login: 'Пользователь' }, true);
       return;
     }
 
-    var self = this;
     ProfileApi.getProfile(tokenId, token).then(function(response) {
       var prof = response.profile || response;
       self.profileData = prof;
       Storage.setProfile(prof);
-      self.renderProfile(prof);
+      self.renderProfile(prof, true);
     }).catch(function(err) {
       if (typeof Debug !== 'undefined') Debug.log('error', 'Profile: load failed', err);
-      self.renderProfile({ login: 'Пользователь' });
+      self.renderProfile({ login: 'Пользователь' }, true);
     });
   },
 
-  renderProfile: function(profile) {
+  renderProfile: function(profile, isOwn) {
     var content = document.getElementById('profile-content');
     if (!content) return;
     content.innerHTML = '';
@@ -152,56 +185,63 @@ var ProfileScreen = {
 
     this.renderWatchStats(content, profile);
 
-    var menu = document.createElement('div');
-    menu.className = 'profile-menu';
+    var focusTarget = null;
 
-    var menuItems = [
-      { id: 'theme', label: 'Тема', sublabel: Storage.getTheme() === 'dark' ? 'Тёмная' : 'Светлая', icon: '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" fill="currentColor"/></svg>' },
-      { id: 'logout', label: 'Выйти', sublabel: '', icon: '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor"/></svg>' }
-    ];
+    if (isOwn) {
+      var menu = document.createElement('div');
+      menu.className = 'profile-menu';
 
-    for (var j = 0; j < menuItems.length; j++) {
-      var item = menuItems[j];
-      var menuItem = document.createElement('button');
-      menuItem.className = 'profile-menu-item';
-      menuItem.setAttribute('data-focusable', 'true');
-      menuItem.setAttribute('data-action', item.id);
+      var menuItems = [
+        { id: 'theme', label: 'Тема', sublabel: Storage.getTheme() === 'dark' ? 'Тёмная' : 'Светлая', icon: '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" fill="currentColor"/></svg>' },
+        { id: 'logout', label: 'Выйти', sublabel: '', icon: '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor"/></svg>' }
+      ];
 
-      var menuIcon = document.createElement('span');
-      menuIcon.className = 'profile-menu-icon';
-      menuIcon.innerHTML = item.icon;
-      menuItem.appendChild(menuIcon);
+      for (var j = 0; j < menuItems.length; j++) {
+        var item = menuItems[j];
+        var menuItem = document.createElement('button');
+        menuItem.className = 'profile-menu-item';
+        menuItem.setAttribute('data-focusable', 'true');
+        menuItem.setAttribute('data-action', item.id);
 
-      var menuText = document.createElement('div');
-      menuText.className = 'profile-menu-text';
+        var menuIcon = document.createElement('span');
+        menuIcon.className = 'profile-menu-icon';
+        menuIcon.innerHTML = item.icon;
+        menuItem.appendChild(menuIcon);
 
-      var menuLabel = document.createElement('div');
-      menuLabel.className = 'profile-menu-label';
-      menuLabel.textContent = item.label;
-      menuText.appendChild(menuLabel);
+        var menuText = document.createElement('div');
+        menuText.className = 'profile-menu-text';
 
-      if (item.sublabel) {
-        var menuSub = document.createElement('div');
-        menuSub.className = 'profile-menu-sublabel';
-        menuSub.textContent = item.sublabel;
-        menuText.appendChild(menuSub);
+        var menuLabel = document.createElement('div');
+        menuLabel.className = 'profile-menu-label';
+        menuLabel.textContent = item.label;
+        menuText.appendChild(menuLabel);
+
+        if (item.sublabel) {
+          var menuSub = document.createElement('div');
+          menuSub.className = 'profile-menu-sublabel';
+          menuSub.textContent = item.sublabel;
+          menuText.appendChild(menuSub);
+        }
+
+        menuItem.appendChild(menuText);
+
+        (function(actionId) {
+          menuItem.addEventListener('click', function() {
+            ProfileScreen.onMenuAction(actionId);
+          });
+        })(item.id);
+
+        menu.appendChild(menuItem);
       }
 
-      menuItem.appendChild(menuText);
-
-      (function(actionId) {
-        menuItem.addEventListener('click', function() {
-          ProfileScreen.onMenuAction(actionId);
-        });
-      })(item.id);
-
-      menu.appendChild(menuItem);
+      content.appendChild(menu);
+      focusTarget = menu;
+    } else {
+      focusTarget = document.getElementById('app');
     }
 
-    content.appendChild(menu);
-
     setTimeout(function() {
-      var first = menu.querySelector('[data-focusable]');
+      var first = focusTarget && focusTarget.querySelector('[data-focusable]');
       if (first) FocusManager.setFocus(first);
     }, 100);
   },
