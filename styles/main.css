@@ -2626,39 +2626,98 @@ input {
   color: #e0e0e0;
 }
 
+.profile-name-row {
+  display: flex;
+  align-items: center;
+}
+
+.profile-name-row > *:not(:first-child) {
+  margin-left: 10px;
+}
+
+.profile-badge-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .profile-status {
   font-size: 14px;
   color: #9e9e9e;
   margin-top: 4px;
 }
 
-.profile-stats {
-  display: flex;
-    margin-bottom: 40px;
-  padding: 20px 24px;
+.profile-meta-row {
+  font-size: 13px;
+  color: #757575;
+  margin-top: 8px;
+}
+
+.profile-watch-stats {
+  margin-bottom: 40px;
+  padding: 24px 28px;
   background: #252525;
   border-radius: 16px;
 }
 
-.profile-stats > *:not(:first-child) {
-  margin-left: 32px;
+.profile-section-title {
+  font-family: 'Roboto Medium', 'Roboto', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: #e0e0e0;
+  margin-bottom: 20px;
 }
 
-.profile-stat {
-  text-align: center;
+.profile-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.profile-stat-value {
-  font-family: 'YTSans', 'Product Sans', 'Roboto Medium', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
+.profile-stats-legend {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-stats-legend > *:not(:first-child) {
+  margin-top: 10px;
+}
+
+.profile-stats-legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
   color: #e0e0e0;
 }
 
-.profile-stat-label {
-  font-size: 13px;
+.profile-stats-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.profile-donut-wrap {
+  flex-shrink: 0;
+  margin-left: 32px;
+}
+
+.profile-watch-totals {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 14px;
   color: #9e9e9e;
-  margin-top: 4px;
+}
+
+.profile-watch-totals > *:not(:first-child) {
+  margin-top: 8px;
+}
+
+.profile-watch-totals b {
+  color: #e0e0e0;
+  font-weight: 500;
 }
 
 .profile-menu {

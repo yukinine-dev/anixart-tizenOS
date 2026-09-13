@@ -109,10 +109,24 @@ var ProfileScreen = {
     var info = document.createElement('div');
     info.className = 'profile-info';
 
+    var nameRow = document.createElement('div');
+    nameRow.className = 'profile-name-row';
+
     var name = document.createElement('div');
     name.className = 'profile-name';
     name.textContent = profile.login || 'Пользователь';
-    info.appendChild(name);
+    nameRow.appendChild(name);
+
+    if (profile.badge && profile.badge.image_url) {
+      var badgeImg = document.createElement('img');
+      badgeImg.className = 'profile-badge-icon';
+      badgeImg.src = profile.badge.image_url;
+      badgeImg.alt = profile.badge.name || '';
+      badgeImg.title = profile.badge.name || '';
+      nameRow.appendChild(badgeImg);
+    }
+
+    info.appendChild(nameRow);
 
     if (profile.status) {
       var status = document.createElement('div');
@@ -121,35 +135,22 @@ var ProfileScreen = {
       info.appendChild(status);
     }
 
+    var metaRow = document.createElement('div');
+    metaRow.className = 'profile-meta-row';
+    var metaParts = [];
+    if (profile.friend_count != null) {
+      metaParts.push((profile.friend_count || 0) + ' ' + this.pluralize(profile.friend_count || 0, 'друг', 'друга', 'друзей'));
+    }
+    if (profile.register_date) {
+      metaParts.push('на проекте с ' + this.formatJoinDate(profile.register_date));
+    }
+    metaRow.textContent = metaParts.join(' • ');
+    info.appendChild(metaRow);
+
     header.appendChild(info);
     content.appendChild(header);
 
-    var stats = document.createElement('div');
-    stats.className = 'profile-stats';
-
-    var statItems = [
-      { label: 'Комментарии', value: profile.comments_count || 0 },
-      { label: 'Видео', value: profile.video_count || 0 },
-      { label: 'Коллекции', value: profile.collections_count || 0 }
-    ];
-
-    for (var i = 0; i < statItems.length; i++) {
-      var stat = document.createElement('div');
-      stat.className = 'profile-stat';
-
-      var val = document.createElement('div');
-      val.className = 'profile-stat-value';
-      val.textContent = statItems[i].value;
-      stat.appendChild(val);
-
-      var label = document.createElement('div');
-      label.className = 'profile-stat-label';
-      label.textContent = statItems[i].label;
-      stat.appendChild(label);
-
-      stats.appendChild(stat);
-    }
-    content.appendChild(stats);
+    this.renderWatchStats(content, profile);
 
     var menu = document.createElement('div');
     menu.className = 'profile-menu';
@@ -203,6 +204,117 @@ var ProfileScreen = {
       var first = menu.querySelector('[data-focusable]');
       if (first) FocusManager.setFocus(first);
     }, 100);
+  },
+
+  pluralize: function(n, one, few, many) {
+    var mod10 = n % 10;
+    var mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 14) return many;
+    if (mod10 === 1) return one;
+    if (mod10 >= 2 && mod10 <= 4) return few;
+    return many;
+  },
+
+  formatJoinDate: function(timestamp) {
+    var months = ['янв.', 'февр.', 'мар.', 'апр.', 'май', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
+    var d = new Date(timestamp * 1000);
+    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  },
+
+  formatWatchTime: function(minutes) {
+    var days = Math.floor(minutes / 1440);
+    var hours = Math.floor((minutes % 1440) / 60);
+    var parts = [];
+    if (days > 0) parts.push(days + ' ' + this.pluralize(days, 'день', 'дня', 'дней'));
+    parts.push(hours + ' ' + this.pluralize(hours, 'час', 'часа', 'часов'));
+    return '~' + parts.join(' ');
+  },
+
+  renderDonut: function(segments) {
+    var total = 0;
+    for (var i = 0; i < segments.length; i++) total += segments[i].value;
+
+    var r = 44, cx = 60, cy = 60, strokeWidth = 16;
+    var circumference = 2 * Math.PI * r;
+    var circles = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#2c2c2c" stroke-width="' + strokeWidth + '"></circle>';
+
+    if (total > 0) {
+      var offset = 0;
+      for (var j = 0; j < segments.length; j++) {
+        var seg = segments[j];
+        if (seg.value <= 0) continue;
+        var length = (seg.value / total) * circumference;
+        circles += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + seg.color + '" stroke-width="' + strokeWidth +
+          '" stroke-dasharray="' + length + ' ' + circumference + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"></circle>';
+        offset += length;
+      }
+    }
+
+    return '<svg width="140" height="140" viewBox="0 0 120 120">' + circles + '</svg>';
+  },
+
+  renderWatchStats: function(content, profile) {
+    var section = document.createElement('div');
+    section.className = 'profile-watch-stats';
+
+    var title = document.createElement('div');
+    title.className = 'profile-section-title';
+    title.textContent = 'Статистика';
+    section.appendChild(title);
+
+    var items = [
+      { label: 'Смотрю', value: profile.watching_count || 0, color: '#73c978' },
+      { label: 'В планах', value: profile.plan_count || 0, color: '#c373c9' },
+      { label: 'Просмотрено', value: profile.completed_count || 0, color: '#6979ce' },
+      { label: 'Отложено', value: profile.hold_on_count || 0, color: '#ffd468' },
+      { label: 'Брошено', value: profile.dropped_count || 0, color: '#ff605b' }
+    ];
+
+    var row = document.createElement('div');
+    row.className = 'profile-stats-row';
+
+    var legend = document.createElement('div');
+    legend.className = 'profile-stats-legend';
+    for (var i = 0; i < items.length; i++) {
+      var entry = document.createElement('div');
+      entry.className = 'profile-stats-legend-item';
+      var dot = document.createElement('span');
+      dot.className = 'profile-stats-legend-dot';
+      dot.style.background = items[i].color;
+      entry.appendChild(dot);
+      var text = document.createElement('span');
+      text.textContent = items[i].label + ' ' + items[i].value;
+      entry.appendChild(text);
+      legend.appendChild(entry);
+    }
+    row.appendChild(legend);
+
+    var donutWrap = document.createElement('div');
+    donutWrap.className = 'profile-donut-wrap';
+    donutWrap.innerHTML = this.renderDonut(items);
+    row.appendChild(donutWrap);
+
+    section.appendChild(row);
+
+    var totals = document.createElement('div');
+    totals.className = 'profile-watch-totals';
+
+    var epRow = document.createElement('div');
+    epRow.textContent = 'Просмотрено серий: ';
+    var epVal = document.createElement('b');
+    epVal.textContent = (profile.watched_episode_count || 0).toLocaleString('ru-RU');
+    epRow.appendChild(epVal);
+    totals.appendChild(epRow);
+
+    var timeRow = document.createElement('div');
+    timeRow.textContent = 'Время просмотра: ';
+    var timeVal = document.createElement('b');
+    timeVal.textContent = this.formatWatchTime(profile.watched_time || 0);
+    timeRow.appendChild(timeVal);
+    totals.appendChild(timeRow);
+
+    section.appendChild(totals);
+    content.appendChild(section);
   },
 
   onMenuAction: function(action) {
