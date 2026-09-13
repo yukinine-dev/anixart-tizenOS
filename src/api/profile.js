@@ -20,16 +20,18 @@ var ProfileApi = {
   },
 
   addToList: function(releaseId, listType, token) {
-    return ApiClient.post('profile/list/add', {
-      token: token,
-      formData: { release_id: releaseId, status: listType }
-    });
+    return ApiClient.get('profile/list/add/' + listType + '/' + releaseId, { token: token });
   },
 
-  removeFromList: function(releaseId, token) {
-    return ApiClient.post('profile/list/delete', {
-      token: token,
-      formData: { release_id: releaseId }
-    });
+  removeFromList: function(releaseId, listType, token) {
+    return ApiClient.get('profile/list/delete/' + listType + '/' + releaseId, { token: token });
+  },
+
+  addFavorite: function(releaseId, token) {
+    return ApiClient.get('favorite/add/' + releaseId, { token: token });
+  },
+
+  removeFavorite: function(releaseId, token) {
+    return ApiClient.get('favorite/delete/' + releaseId, { token: token });
   }
 };

@@ -154,6 +154,16 @@ var DetailsScreen = {
     });
     actions.appendChild(favBtn);
 
+    var favoriteBtn = document.createElement('button');
+    favoriteBtn.className = 'details-action-btn';
+    favoriteBtn.id = 'details-favorite-btn';
+    favoriteBtn.setAttribute('data-focusable', 'true');
+    this.renderFavoriteBtn(favoriteBtn, release);
+    favoriteBtn.addEventListener('click', function() {
+      DetailsScreen.toggleFavorite(release);
+    });
+    actions.appendChild(favoriteBtn);
+
     var shareBtn = document.createElement('button');
     shareBtn.className = 'details-action-btn';
     shareBtn.setAttribute('data-focusable', 'true');
@@ -804,7 +814,16 @@ var DetailsScreen = {
     picker.className = 'bookmark-picker';
     picker.id = 'bookmark-picker';
 
+    var sheet = document.createElement('div');
+    sheet.className = 'bookmark-picker-sheet';
+
+    var title = document.createElement('div');
+    title.className = 'bookmark-picker-title';
+    title.textContent = 'Выберите статус просмотра';
+    sheet.appendChild(title);
+
     var lists = [
+      { status: 0, label: 'Не смотрю' },
       { status: 1, label: 'Смотрю' },
       { status: 2, label: 'В планах' },
       { status: 3, label: 'Просмотрено' },
@@ -812,43 +831,54 @@ var DetailsScreen = {
       { status: 5, label: 'Брошено' }
     ];
 
+    var currentStatus = release.profile_list_status || 0;
+
     for (var i = 0; i < lists.length; i++) {
       var item = lists[i];
       var btn = document.createElement('button');
       btn.className = 'bookmark-picker-item';
       btn.setAttribute('data-focusable', 'true');
-      btn.textContent = item.label;
 
-      if (release.profile_list_status === item.status) {
+      var radio = document.createElement('span');
+      radio.className = 'bookmark-picker-radio';
+      btn.appendChild(radio);
+
+      var label = document.createElement('span');
+      label.textContent = item.label;
+      btn.appendChild(label);
+
+      if (currentStatus === item.status) {
         btn.classList.add('active');
       }
 
       (function(status) {
         btn.addEventListener('click', function() {
-          DetailsScreen.addToList(release, status);
+          if (status === 0) {
+            DetailsScreen.removeFromList(release);
+          } else {
+            DetailsScreen.addToList(release, status);
+          }
         });
       })(item.status);
 
-      picker.appendChild(btn);
+      sheet.appendChild(btn);
     }
 
-    if (release.profile_list_status) {
-      var removeBtn = document.createElement('button');
-      removeBtn.className = 'bookmark-picker-item bookmark-picker-remove';
-      removeBtn.setAttribute('data-focusable', 'true');
-      removeBtn.textContent = 'Удалить из списка';
-      removeBtn.addEventListener('click', function() {
-        DetailsScreen.removeFromList(release);
-      });
-      picker.appendChild(removeBtn);
-    }
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'bookmark-picker-cancel';
+    cancelBtn.setAttribute('data-focusable', 'true');
+    cancelBtn.textContent = 'Отмена';
+    cancelBtn.addEventListener('click', function() { picker.remove(); });
+    sheet.appendChild(cancelBtn);
+
+    picker.appendChild(sheet);
 
     var container = document.getElementById('app');
     container.appendChild(picker);
 
     setTimeout(function() {
-      var first = picker.querySelector('[data-focusable]');
-      if (first) FocusManager.setFocus(first);
+      var active = sheet.querySelector('.bookmark-picker-item.active') || sheet.querySelector('[data-focusable]');
+      if (active) FocusManager.setFocus(active);
     }, 50);
 
     picker.addEventListener('click', function(e) {
@@ -880,9 +910,9 @@ var DetailsScreen = {
 
   removeFromList: function(release) {
     var token = Storage.getToken();
-    if (!token || typeof ProfileApi === 'undefined') return;
+    if (!token || typeof ProfileApi === 'undefined' || !release.profile_list_status) return;
 
-    ProfileApi.removeFromList(release.id, token).then(function() {
+    ProfileApi.removeFromList(release.id, release.profile_list_status, token).then(function() {
       release.profile_list_status = null;
       if (typeof Debug !== 'undefined') Debug.log('info', 'Bookmark: removed');
 
@@ -896,5 +926,36 @@ var DetailsScreen = {
 
     var picker = document.getElementById('bookmark-picker');
     if (picker) picker.remove();
+  },
+
+  renderFavoriteBtn: function(btn, release) {
+    var filled = !!release.is_favorite;
+    var icon = filled
+      ? '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>'
+      : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+    var count = release.favorites_count != null ? release.favorites_count.toLocaleString('ru-RU') : 'Избранное';
+    btn.innerHTML = icon + '<span>' + count + '</span>';
+    btn.classList.toggle('active', filled);
+  },
+
+  toggleFavorite: function(release) {
+    var token = Storage.getToken();
+    if (!token || typeof ProfileApi === 'undefined') return;
+    var self = this;
+    var btn = document.getElementById('details-favorite-btn');
+
+    var wasFavorite = !!release.is_favorite;
+    var request = wasFavorite
+      ? ProfileApi.removeFavorite(release.id, token)
+      : ProfileApi.addFavorite(release.id, token);
+
+    request.then(function() {
+      release.is_favorite = !wasFavorite;
+      release.favorites_count = (release.favorites_count || 0) + (wasFavorite ? -1 : 1);
+      if (btn) self.renderFavoriteBtn(btn, release);
+      if (typeof Debug !== 'undefined') Debug.log('info', 'Favorite: ' + (wasFavorite ? 'removed' : 'added'));
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Favorite: toggle failed', err);
+    });
   }
 };
