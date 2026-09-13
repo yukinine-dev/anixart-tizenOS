@@ -2955,31 +2955,33 @@ input {
 }
 
 .bookmark-picker-sheet {
-  width: 360px;
-  background: #252525;
-  border-radius: 16px;
+  width: 560px;
+  background: #262626;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
 .bookmark-picker-title {
-  padding: 20px 24px 12px;
+  padding: 32px 36px 20px;
   font-family: 'Roboto Medium', 'Roboto', sans-serif;
-  font-size: 17px;
+  font-size: 22px;
   font-weight: 500;
-  color: #e0e0e0;
+  color: #ffffff;
 }
 
 .bookmark-picker-item {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 14px 24px;
+  padding: 18px 36px;
   background: transparent;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   color: #e0e0e0;
   font-family: 'Roboto', 'Roboto Medium', sans-serif;
-  font-size: 15px;
+  font-size: 18px;
   text-align: left;
   cursor: pointer;
   transition: background 0.15s;
@@ -2987,11 +2989,11 @@ input {
 
 .bookmark-picker-radio {
   flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  margin-right: 16px;
+  width: 24px;
+  height: 24px;
+  margin-right: 20px;
   border-radius: 50%;
-  border: 2px solid #757575;
+  border: 2px solid #6e6e6e;
   position: relative;
 }
 
@@ -3002,28 +3004,29 @@ input {
 .bookmark-picker-item.active .bookmark-picker-radio::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 8px;
-  height: 8px;
+  top: 4px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: #f04e5c;
 }
 
 .bookmark-picker-item.active {
-  color: #f04e5c;
+  color: #ffffff;
+  background: rgba(240, 78, 92, 0.12);
 }
 
 .bookmark-picker-cancel {
   display: block;
   width: 100%;
-  padding: 16px 24px;
+  padding: 22px 36px;
   background: transparent;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   color: #9e9e9e;
   font-family: 'Roboto Medium', 'Roboto', sans-serif;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 500;
   text-align: center;
   cursor: pointer;
