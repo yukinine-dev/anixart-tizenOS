@@ -29,7 +29,9 @@ var HomeScreen = {
   hasMore: true,
 
   render: function() {
-    this.currentTab = 'my';
+    // currentTab is intentionally not reset here -- coming back via the
+    // back button (e.g. from a title opened while on "Дунхуа") should land
+    // on that same tab, not jump back to "Моя вкладка".
     this.page = 0;
     this.items = [];
     this.hasMore = true;
@@ -76,11 +78,11 @@ var HomeScreen = {
     var bottomNav = BottomNav.render('home');
     container.appendChild(bottomNav);
 
-    if (this.hasMyTabFilter()) {
+    if (this.currentTab === 'my' && !this.hasMyTabFilter()) {
+      this.renderMyTab(content);
+    } else {
       content.appendChild(this.createSkeleton());
       this.loadPage();
-    } else {
-      this.renderMyTab(content);
     }
   },
 

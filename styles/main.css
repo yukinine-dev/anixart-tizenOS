@@ -1170,6 +1170,10 @@ input {
   flex-direction: column;
 }
 
+.home-cat-list {
+  padding: 6px 32px 32px;
+}
+
 .popular-list > *:not(:first-child) {
   margin-top: 16px;
 }
@@ -1235,10 +1239,6 @@ input {
   font-size: 14px;
   color: #9e9e9e;
   line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* ===== SECTIONS ===== */
