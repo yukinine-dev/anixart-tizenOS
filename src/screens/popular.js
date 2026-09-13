@@ -204,6 +204,7 @@ var PopularScreen = {
     var cached = this.descCache[release.id];
     if (cached) {
       descEl.textContent = cached;
+      descEl.classList.add('popular-desc-updated');
       return;
     }
 
@@ -213,6 +214,7 @@ var PopularScreen = {
       if (full && full.length > descEl.textContent.length) {
         PopularScreen.descCache[release.id] = full;
         descEl.textContent = full;
+        descEl.classList.add('popular-desc-updated');
       }
     }).catch(function() {});
   }

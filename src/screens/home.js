@@ -314,6 +314,7 @@ var HomeScreen = {
     var cached = this.descCache[release.id];
     if (cached) {
       descEl.textContent = cached;
+      descEl.classList.add('popular-desc-updated');
       return;
     }
 
@@ -323,6 +324,7 @@ var HomeScreen = {
       if (full && full.length > descEl.textContent.length) {
         HomeScreen.descCache[release.id] = full;
         descEl.textContent = full;
+        descEl.classList.add('popular-desc-updated');
       }
     }).catch(function() {});
   },
