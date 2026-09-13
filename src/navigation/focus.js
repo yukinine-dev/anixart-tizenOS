@@ -133,6 +133,17 @@ var FocusManager = {
       }
     }
 
+    var vScrollContainer = el.closest('.tab-settings-picker-list');
+    if (vScrollContainer) {
+      var elRectV = el.getBoundingClientRect();
+      var contRectV = vScrollContainer.getBoundingClientRect();
+      if (elRectV.top < contRectV.top) {
+        vScrollContainer.scrollTop = el.offsetTop - vScrollContainer.offsetTop;
+      } else if (elRectV.bottom > contRectV.bottom) {
+        vScrollContainer.scrollTop = el.offsetTop - vScrollContainer.offsetTop - vScrollContainer.clientHeight + el.offsetHeight;
+      }
+    }
+
     var mainScroll = document.getElementById('main-scroll');
     if (mainScroll) {
       var elRect2 = el.getBoundingClientRect();
@@ -146,7 +157,7 @@ var FocusManager = {
 
   getFocusables: function(container) {
     if (!container) {
-      var dialog = document.getElementById('exit-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-speed-list') || document.getElementById('player-quality-list') || document.getElementById('player-ep-list');
+      var dialog = document.getElementById('exit-dialog') || document.getElementById('tab-settings-picker') || document.getElementById('bookmark-picker') || document.getElementById('share-dialog') || document.getElementById('voiceover-picker') || document.getElementById('screenshot-viewer') || document.getElementById('player-speed-list') || document.getElementById('player-quality-list') || document.getElementById('player-ep-list');
       container = dialog || document.getElementById('app');
     }
     if (!container) return [];

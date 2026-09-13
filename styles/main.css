@@ -1120,8 +1120,15 @@ input {
   flex-direction: column;
 }
 
+.tab-settings-picker-sheet > .bookmark-picker-title,
+.tab-settings-picker-sheet > .bookmark-picker-cancel {
+  flex-shrink: 0;
+}
+
 .tab-settings-picker-list {
   overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .tab-settings-picker-list::-webkit-scrollbar {
