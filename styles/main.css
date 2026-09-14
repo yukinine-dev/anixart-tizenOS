@@ -667,7 +667,7 @@ input {
 }
 
 .home-content {
-  padding-top: 6px;
+  padding-top: 12px;
   padding-bottom: 24px;
 }
 
@@ -1344,7 +1344,14 @@ input {
 /* ===== INTERESTING SECTION ===== */
 
 .interesting-scroll {
-  
+  /* .section-scroll is a row-flex with overflow-y:hidden; its own 6px
+     top/bottom padding is meant to give focused cards' 3px ring room to
+     breathe, but on this TV's WebKit a row-flex's auto cross-axis height
+     doesn't reliably grow to include that padding, so the clip box ends
+     up flush with the 200px card itself and the ring gets cut. Force the
+     box tall enough explicitly so the clip boundary can't collapse onto
+     the card regardless of that quirk. */
+  min-height: 214px;
 }
 
 .interesting-scroll > *:not(:first-child) {
