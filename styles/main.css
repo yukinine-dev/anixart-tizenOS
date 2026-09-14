@@ -1318,6 +1318,22 @@ input {
   display: none;
 }
 
+.schedule-today-section .section-title {
+  color: #f04e5c;
+}
+
+.schedule-today-section .section-title::after {
+  content: 'Сегодня';
+  margin-left: 12px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: rgba(240, 78, 92, 0.15);
+  color: #f04e5c;
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
 .section-separator {
   height: 1px;
   margin: 16px 32px 0;

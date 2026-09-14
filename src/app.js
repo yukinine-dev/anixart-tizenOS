@@ -66,7 +66,10 @@ var App = {
         PopularScreen.render();
         break;
       case 'tab-settings':
-        TabSettingsScreen.render();
+        TabSettingsScreen.render(params);
+        break;
+      case 'schedule':
+        ScheduleScreen.render();
         break;
       case 'details':
         DetailsScreen.render(params);
@@ -117,7 +120,10 @@ var App = {
           PopularScreen.render();
           break;
         case 'tab-settings':
-          TabSettingsScreen.render();
+          TabSettingsScreen.render(prev.params);
+          break;
+        case 'schedule':
+          ScheduleScreen.render();
           break;
         case 'details':
           DetailsScreen.render(prev.params);

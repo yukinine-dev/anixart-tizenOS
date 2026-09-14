@@ -38,9 +38,12 @@ var TabSettingsScreen = {
 
   filter: null,
   voiceoverTypes: null,
+  mode: 'my-tab',
 
-  render: function() {
-    this.filter = Storage.getMyTabFilter() || this.cloneDefault();
+  render: function(params) {
+    params = params || {};
+    this.mode = params.mode || 'my-tab';
+    this.filter = this.mode === 'quick' ? this.cloneDefault() : (Storage.getMyTabFilter() || this.cloneDefault());
 
     var container = document.getElementById('app');
     container.innerHTML = '';
@@ -58,7 +61,7 @@ var TabSettingsScreen = {
 
     var titleEl = document.createElement('div');
     titleEl.className = 'bookmarks-title';
-    titleEl.textContent = 'Настройки вкладки';
+    titleEl.textContent = this.mode === 'quick' ? 'Фильтр' : 'Настройки вкладки';
     toolbar.appendChild(titleEl);
 
     container.appendChild(toolbar);
@@ -93,7 +96,9 @@ var TabSettingsScreen = {
 
     var note = document.createElement('div');
     note.className = 'tab-settings-note';
-    note.textContent = 'Выберите с помощью фильтров то, что хотите видеть на своей вкладке. Изменения будут доступны только на этом устройстве.';
+    note.textContent = this.mode === 'quick'
+      ? 'Настройте фильтр и нажмите «Найти», чтобы посмотреть подходящие релизы.'
+      : 'Выберите с помощью фильтров то, что хотите видеть на своей вкладке. Изменения будут доступны только на этом устройстве.';
     content.appendChild(note);
 
     var f = this.filter;
@@ -176,10 +181,14 @@ var TabSettingsScreen = {
     var applyBtn = document.createElement('button');
     applyBtn.className = 'tab-settings-apply-btn';
     applyBtn.setAttribute('data-focusable', 'true');
-    applyBtn.textContent = 'Применить';
+    applyBtn.textContent = this.mode === 'quick' ? 'Найти' : 'Применить';
     applyBtn.addEventListener('click', function() {
-      Storage.setMyTabFilter(self.filter);
-      App.goBack();
+      if (self.mode === 'quick') {
+        App.showScreen('release-list', { mode: 'filtered', title: 'Результаты фильтра', filterBody: self.filter });
+      } else {
+        Storage.setMyTabFilter(self.filter);
+        App.goBack();
+      }
     });
     buttons.appendChild(applyBtn);
 

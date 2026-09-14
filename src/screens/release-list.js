@@ -8,13 +8,19 @@ var ReleaseListScreen = {
 
   FETCHERS: {
     watching: function(page, token) { return DiscoverApi.getWatching(page, token); },
-    collections: function(page, token) { return ApiClient.get('collection/all/' + page, { token: token }); }
+    collections: function(page, token) { return ApiClient.get('collection/all/' + page, { token: token }); },
+    filtered: function(page, token) {
+      return ApiClient.post('filter/' + page, { token: token, json: ReleaseListScreen.filterBody || {} });
+    }
   },
+
+  filterBody: null,
 
   render: function(params) {
     params = params || {};
     this.mode = params.mode || 'watching';
     this.title = params.title || 'Список';
+    this.filterBody = params.filterBody || null;
     this.page = 0;
     this.items = [];
     this.hasMore = true;
@@ -81,7 +87,8 @@ var ReleaseListScreen = {
       self.loading = false;
 
       if (items.length === 0 && self.page === 0) {
-        content.innerHTML = '<div class="bookmarks-empty">Пусто</div>';
+        var emptyText = self.mode === 'filtered' ? 'По этому фильтру ничего не нашлось. Попробуйте изменить условия.' : 'Пусто';
+        content.innerHTML = '<div class="bookmarks-empty">' + emptyText + '</div>';
         self.hasMore = false;
         return;
       }

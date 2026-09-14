@@ -28,5 +28,9 @@ var DiscoverApi = {
 
   getCollections: function(page, token) {
     return ApiClient.get('collection/all/' + page, { token: token });
+  },
+
+  getSchedule: function(token) {
+    return ApiClient.get('schedule', { token: token });
   }
 };
