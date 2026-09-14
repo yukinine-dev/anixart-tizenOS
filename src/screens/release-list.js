@@ -14,11 +14,18 @@ var ReleaseListScreen = {
     },
     'release-collections': function(page, token) {
       return CollectionApi.getCollectionsForRelease(ReleaseListScreen.releaseId, page, token);
+    },
+    'profile-votes': function(page, token) {
+      return ProfileApi.getVotedReleases(ReleaseListScreen.profileId, page, token);
+    },
+    'profile-collections': function(page, token) {
+      return CollectionApi.getUserCollections(ReleaseListScreen.profileId, page, token);
     }
   },
 
   filterBody: null,
   releaseId: null,
+  profileId: null,
 
   render: function(params) {
     params = params || {};
@@ -26,6 +33,7 @@ var ReleaseListScreen = {
     this.title = params.title || 'Список';
     this.filterBody = params.filterBody || null;
     this.releaseId = params.releaseId || null;
+    this.profileId = params.profileId || null;
     this.page = 0;
     this.items = [];
     this.hasMore = true;
@@ -95,6 +103,8 @@ var ReleaseListScreen = {
         var emptyText = 'Пусто';
         if (self.mode === 'filtered') emptyText = 'По этому фильтру ничего не нашлось. Попробуйте изменить условия.';
         if (self.mode === 'release-collections') emptyText = 'Этого релиза пока нет ни в одной коллекции.';
+        if (self.mode === 'profile-votes') emptyText = 'Нет оценённых релизов';
+        if (self.mode === 'profile-collections') emptyText = 'Нет данных для отображения';
         content.innerHTML = '<div class="bookmarks-empty">' + emptyText + '</div>';
         self.hasMore = false;
         return;
@@ -120,9 +130,14 @@ var ReleaseListScreen = {
     var grid = document.createElement('div');
     grid.className = 'bookmarks-grid';
 
+    var isCollectionMode = this.mode === 'collections' || this.mode === 'release-collections' || this.mode === 'profile-collections';
+    var isVotesMode = this.mode === 'profile-votes';
+
     for (var i = 0; i < this.items.length; i++) {
-      var isCollectionMode = this.mode === 'collections' || this.mode === 'release-collections';
-      var card = isCollectionMode ? this.createCollectionCard(this.items[i]) : HomeScreen.createReleaseCard(this.items[i]);
+      var card;
+      if (isCollectionMode) card = this.createCollectionCard(this.items[i]);
+      else if (isVotesMode) card = this.createVoteCard(this.items[i]);
+      else card = HomeScreen.createReleaseCard(this.items[i]);
       grid.appendChild(card);
     }
 
@@ -162,6 +177,44 @@ var ReleaseListScreen = {
     info.appendChild(meta);
 
     card.appendChild(info);
+    return card;
+  },
+
+  createVoteCard: function(release) {
+    var card = document.createElement('div');
+    card.className = 'bookmark-card';
+    card.setAttribute('data-focusable', 'true');
+
+    var poster = document.createElement('div');
+    poster.className = 'bookmark-card-poster';
+    var img = document.createElement('img');
+    img.src = release.image || '';
+    img.alt = '';
+    img.loading = 'lazy';
+    poster.appendChild(img);
+    card.appendChild(poster);
+
+    var info = document.createElement('div');
+    info.className = 'bookmark-card-info';
+
+    var title = document.createElement('div');
+    title.className = 'bookmark-card-title';
+    title.textContent = release.title_ru || release.title || '';
+    info.appendChild(title);
+
+    info.appendChild(ProfileScreen.renderStarRow(release.my_vote || 0));
+
+    var meta = document.createElement('div');
+    meta.className = 'bookmark-card-meta';
+    meta.textContent = ProfileScreen.formatRelativeDate(release.voted_at);
+    info.appendChild(meta);
+
+    card.appendChild(info);
+
+    card.addEventListener('click', function() {
+      App.showScreen('details', { releaseId: release.id });
+    });
+
     return card;
   }
 };

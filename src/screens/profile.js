@@ -1,11 +1,23 @@
 var ProfileScreen = {
   profileData: null,
   viewedProfileId: null,
+  isOwn: true,
+  currentTab: 'stats',
+
+  TABS: [
+    { id: 'stats', label: 'Статистика' },
+    { id: 'votes', label: 'Оценки релизов' },
+    { id: 'collections', label: 'Коллекции' },
+    { id: 'comments', label: 'Комментарии' }
+  ],
+
+  MONTHS: ['янв.', 'февр.', 'мар.', 'апр.', 'май', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'],
 
   render: function(params) {
     params = params || {};
     var ownId = Storage.getTokenId();
     this.viewedProfileId = (params.profileId && String(params.profileId) !== String(ownId)) ? params.profileId : null;
+    this.currentTab = 'stats';
 
     var container = document.getElementById('app');
     container.innerHTML = '';
@@ -93,15 +105,17 @@ var ProfileScreen = {
     if (profile) {
       this.profileData = profile;
       this.renderProfile(profile, true);
-      return;
     }
 
     var tokenId = Storage.getTokenId();
     if (!tokenId) {
-      this.renderProfile({ login: 'Пользователь' }, true);
+      if (!profile) this.renderProfile({ login: 'Пользователь' }, true);
       return;
     }
 
+    // Always refresh from the network even if a cached profile was already
+    // rendered above -- history/votes/watch_dynamics change constantly and
+    // the cached copy is only ever the shape saved right after login.
     ProfileApi.getProfile(tokenId, token).then(function(response) {
       var prof = response.profile || response;
       self.profileData = prof;
@@ -109,11 +123,14 @@ var ProfileScreen = {
       self.renderProfile(prof, true);
     }).catch(function(err) {
       if (typeof Debug !== 'undefined') Debug.log('error', 'Profile: load failed', err);
-      self.renderProfile({ login: 'Пользователь' }, true);
+      if (!profile) self.renderProfile({ login: 'Пользователь' }, true);
     });
   },
 
   renderProfile: function(profile, isOwn) {
+    this.profileData = profile;
+    this.isOwn = isOwn;
+
     var content = document.getElementById('profile-content');
     if (!content) return;
     content.innerHTML = '';
@@ -171,9 +188,6 @@ var ProfileScreen = {
     var metaRow = document.createElement('div');
     metaRow.className = 'profile-meta-row';
     var metaParts = [];
-    if (profile.friend_count != null) {
-      metaParts.push((profile.friend_count || 0) + ' ' + this.pluralize(profile.friend_count || 0, 'друг', 'друга', 'друзей'));
-    }
     if (profile.register_date) {
       metaParts.push('на проекте с ' + this.formatJoinDate(profile.register_date));
     }
@@ -183,9 +197,32 @@ var ProfileScreen = {
     header.appendChild(info);
     content.appendChild(header);
 
-    this.renderWatchStats(content, profile);
+    this.renderFriendsRow(content, profile);
 
-    var focusTarget = null;
+    var tabsWrap = document.createElement('div');
+    tabsWrap.className = 'home-tabs profile-tabs';
+    tabsWrap.id = 'profile-tabs';
+    for (var i = 0; i < this.TABS.length; i++) {
+      var tab = this.TABS[i];
+      var tabBtn = document.createElement('button');
+      tabBtn.className = 'home-tab' + (tab.id === this.currentTab ? ' active' : '');
+      tabBtn.setAttribute('data-focusable', 'true');
+      tabBtn.setAttribute('data-tab-id', tab.id);
+      tabBtn.textContent = tab.label;
+      (function(tabId) {
+        tabBtn.addEventListener('click', function() { ProfileScreen.switchTab(tabId); });
+      })(tab.id);
+      tabsWrap.appendChild(tabBtn);
+    }
+    content.appendChild(tabsWrap);
+
+    var tabContent = document.createElement('div');
+    tabContent.id = 'profile-tab-content';
+    content.appendChild(tabContent);
+    this.renderTabContent();
+
+    this.renderDynamics(content, profile);
+    this.renderHistory(content, profile);
 
     if (isOwn) {
       var menu = document.createElement('div');
@@ -235,15 +272,47 @@ var ProfileScreen = {
       }
 
       content.appendChild(menu);
-      focusTarget = menu;
-    } else {
-      focusTarget = document.getElementById('app');
     }
+
+    var focusTarget = isOwn ? tabsWrap : document.getElementById('app');
 
     setTimeout(function() {
       var first = focusTarget && focusTarget.querySelector('[data-focusable]');
       if (first) FocusManager.setFocus(first);
     }, 100);
+  },
+
+  switchTab: function(tabId) {
+    this.currentTab = tabId;
+    var tabs = document.querySelectorAll('#profile-tabs .home-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('active', tabs[i].getAttribute('data-tab-id') === tabId);
+    }
+    this.renderTabContent();
+  },
+
+  renderTabContent: function() {
+    var container = document.getElementById('profile-tab-content');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var profile = this.profileData;
+    if (!profile) return;
+
+    switch (this.currentTab) {
+      case 'stats':
+        this.renderWatchStats(container, profile);
+        break;
+      case 'votes':
+        this.renderVotesTab(container, profile);
+        break;
+      case 'collections':
+        this.renderCollectionsTab(container, profile);
+        break;
+      case 'comments':
+        this.renderCommentsTab(container, profile);
+        break;
+    }
   },
 
   pluralize: function(n, one, few, many) {
@@ -256,9 +325,8 @@ var ProfileScreen = {
   },
 
   formatJoinDate: function(timestamp) {
-    var months = ['янв.', 'февр.', 'мар.', 'апр.', 'май', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
     var d = new Date(timestamp * 1000);
-    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    return d.getDate() + ' ' + this.MONTHS[d.getMonth()] + ' ' + d.getFullYear();
   },
 
   formatWatchTime: function(minutes) {
@@ -268,6 +336,55 @@ var ProfileScreen = {
     if (days > 0) parts.push(days + ' ' + this.pluralize(days, 'день', 'дня', 'дней'));
     parts.push(hours + ' ' + this.pluralize(hours, 'час', 'часа', 'часов'));
     return '~' + parts.join(' ');
+  },
+
+  formatRelativeDate: function(timestamp) {
+    if (!timestamp) return '';
+    var date = new Date(timestamp * 1000);
+    var diffMs = Date.now() - date.getTime();
+    var diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'только что';
+    if (diffMin < 60) return diffMin + ' мин назад';
+    var diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return diffHours + ' ч назад';
+    var pad = function(n) { return n < 10 ? '0' + n : n; };
+    var now = new Date();
+    var isYesterday = now.getDate() - date.getDate() === 1 && now.getMonth() === date.getMonth();
+    if (isYesterday) return 'вчера в ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    return date.getDate() + ' ' + this.MONTHS[date.getMonth()] + ' в ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+  },
+
+  renderFriendsRow: function(content, profile) {
+    var friends = profile.friends_preview;
+    if (!friends || friends.length === 0) return;
+
+    var row = document.createElement('div');
+    row.className = 'profile-friends-row';
+    row.setAttribute('data-focusable', 'true');
+
+    var count = document.createElement('span');
+    count.className = 'profile-friends-count';
+    count.textContent = (profile.friend_count || friends.length) + ' ' + this.pluralize(profile.friend_count || friends.length, 'друг', 'друга', 'друзей');
+    row.appendChild(count);
+
+    var avatars = document.createElement('div');
+    avatars.className = 'profile-friends-avatars';
+    for (var i = 0; i < Math.min(friends.length, 5); i++) {
+      var f = friends[i];
+      var av = document.createElement('img');
+      av.className = 'profile-friends-avatar';
+      av.src = f.avatar || '';
+      av.alt = f.login || '';
+      av.onerror = function() { this.style.visibility = 'hidden'; };
+      avatars.appendChild(av);
+    }
+    row.appendChild(avatars);
+
+    row.addEventListener('click', function() {
+      if (friends[0] && friends[0].id) App.showScreen('profile', { profileId: friends[0].id });
+    });
+
+    content.appendChild(row);
   },
 
   renderDonut: function(segments) {
@@ -293,15 +410,7 @@ var ProfileScreen = {
     return '<svg width="140" height="140" viewBox="0 0 120 120">' + circles + '</svg>';
   },
 
-  renderWatchStats: function(content, profile) {
-    var section = document.createElement('div');
-    section.className = 'profile-watch-stats';
-
-    var title = document.createElement('div');
-    title.className = 'profile-section-title';
-    title.textContent = 'Статистика';
-    section.appendChild(title);
-
+  renderWatchStats: function(container, profile) {
     var items = [
       { label: 'Смотрю', value: profile.watching_count || 0, color: '#73c978' },
       { label: 'В планах', value: profile.plan_count || 0, color: '#c373c9' },
@@ -334,7 +443,7 @@ var ProfileScreen = {
     donutWrap.innerHTML = this.renderDonut(items);
     row.appendChild(donutWrap);
 
-    section.appendChild(row);
+    container.appendChild(row);
 
     var totals = document.createElement('div');
     totals.className = 'profile-watch-totals';
@@ -353,7 +462,267 @@ var ProfileScreen = {
     timeRow.appendChild(timeVal);
     totals.appendChild(timeRow);
 
-    section.appendChild(totals);
+    container.appendChild(totals);
+  },
+
+  renderStarRow: function(vote) {
+    var wrap = document.createElement('div');
+    wrap.className = 'profile-vote-stars';
+    for (var s = 1; s <= 5; s++) {
+      var star = document.createElement('span');
+      star.className = 'profile-vote-star' + (vote >= s ? ' filled' : '');
+      star.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/></svg>';
+      wrap.appendChild(star);
+    }
+    return wrap;
+  },
+
+  createVoteRow: function(release) {
+    var row = document.createElement('div');
+    row.className = 'profile-list-row';
+    row.setAttribute('data-focusable', 'true');
+
+    var poster = document.createElement('div');
+    poster.className = 'profile-list-poster';
+    var img = document.createElement('img');
+    img.src = release.image || '';
+    img.alt = '';
+    img.loading = 'lazy';
+    poster.appendChild(img);
+    row.appendChild(poster);
+
+    var info = document.createElement('div');
+    info.className = 'profile-list-info';
+
+    var title = document.createElement('div');
+    title.className = 'profile-list-title';
+    title.textContent = release.title_ru || release.title || '';
+    info.appendChild(title);
+
+    info.appendChild(this.renderStarRow(release.my_vote || 0));
+
+    var date = document.createElement('div');
+    date.className = 'profile-list-date';
+    date.textContent = this.formatRelativeDate(release.voted_at);
+    info.appendChild(date);
+
+    row.appendChild(info);
+
+    row.addEventListener('click', function() {
+      App.showScreen('details', { releaseId: release.id });
+    });
+
+    return row;
+  },
+
+  renderVotesTab: function(container, profile) {
+    var votes = profile.votes || [];
+    if (votes.length === 0) {
+      container.innerHTML = '<div class="profile-tab-empty">Нет оценённых релизов</div>';
+      return;
+    }
+
+    var list = document.createElement('div');
+    list.className = 'profile-list';
+    for (var i = 0; i < votes.length; i++) {
+      list.appendChild(this.createVoteRow(votes[i]));
+    }
+    container.appendChild(list);
+
+    if (this.viewedProfileId || profile.id) {
+      var showAllBtn = document.createElement('button');
+      showAllBtn.className = 'profile-show-all-btn';
+      showAllBtn.setAttribute('data-focusable', 'true');
+      showAllBtn.textContent = 'Показать все';
+      var profileId = this.viewedProfileId || profile.id;
+      showAllBtn.addEventListener('click', function() {
+        App.showScreen('release-list', { mode: 'profile-votes', title: 'Оценки релизов', profileId: profileId });
+      });
+      container.appendChild(showAllBtn);
+    }
+  },
+
+  renderCollectionsTab: function(container, profile) {
+    var collections = profile.collections_preview || [];
+    if (collections.length === 0) {
+      container.innerHTML = '<div class="profile-tab-empty">Нет данных для отображения</div>';
+      return;
+    }
+
+    var grid = document.createElement('div');
+    grid.className = 'bookmarks-grid profile-collections-grid';
+    for (var i = 0; i < collections.length; i++) {
+      grid.appendChild(ReleaseListScreen.createCollectionCard(collections[i]));
+    }
+    container.appendChild(grid);
+
+    if (profile.collection_count > collections.length) {
+      var showAllBtn = document.createElement('button');
+      showAllBtn.className = 'profile-show-all-btn';
+      showAllBtn.setAttribute('data-focusable', 'true');
+      showAllBtn.textContent = 'Показать все';
+      var profileId = this.viewedProfileId || profile.id;
+      showAllBtn.addEventListener('click', function() {
+        App.showScreen('release-list', { mode: 'profile-collections', title: 'Коллекции', profileId: profileId });
+      });
+      container.appendChild(showAllBtn);
+    }
+  },
+
+  renderCommentsTab: function(container, profile) {
+    var comments = profile.comments_preview || [];
+    if (comments.length === 0) {
+      container.innerHTML = '<div class="profile-tab-empty">Нет комментариев</div>';
+      return;
+    }
+
+    var list = document.createElement('div');
+    list.className = 'profile-comments-list';
+
+    for (var i = 0; i < comments.length; i++) {
+      var c = comments[i];
+      var releaseObj = (c.release && typeof c.release === 'object') ? c.release : null;
+      var releaseId = releaseObj ? releaseObj.id : c.release;
+
+      var row = document.createElement('button');
+      row.className = 'profile-comment-row';
+      row.setAttribute('data-focusable', 'true');
+
+      var message = document.createElement('div');
+      message.className = 'profile-comment-message';
+      message.textContent = c.is_deleted ? 'Комментарий был удалён.' : (c.is_spoiler ? 'Комментарий может содержать спойлер.' : (c.message || ''));
+      row.appendChild(message);
+
+      var meta = document.createElement('div');
+      meta.className = 'profile-comment-meta';
+      meta.textContent = this.formatRelativeDate(c.timestamp) + (releaseObj && releaseObj.title_ru ? ' · ' + releaseObj.title_ru : '');
+      row.appendChild(meta);
+
+      row.addEventListener('click', function(rid) {
+        return function() { if (rid) App.showScreen('details', { releaseId: rid }); };
+      }(releaseId));
+
+      list.appendChild(row);
+    }
+
+    container.appendChild(list);
+  },
+
+  renderDynamics: function(content, profile) {
+    var dynamics = profile.watch_dynamics;
+    if (!dynamics || dynamics.length === 0) return;
+
+    var recent = dynamics.slice(-7);
+
+    var section = document.createElement('div');
+    section.className = 'profile-section';
+
+    var divider = document.createElement('div');
+    divider.className = 'details-inner-divider';
+    section.appendChild(divider);
+
+    var title = document.createElement('div');
+    title.className = 'profile-section-title';
+    title.textContent = 'Динамика просмотра серий';
+    section.appendChild(title);
+
+    var maxCount = 1;
+    for (var i = 0; i < recent.length; i++) maxCount = Math.max(maxCount, recent[i].count || 0);
+
+    var chart = document.createElement('div');
+    chart.className = 'profile-dynamics-chart';
+    for (var j = 0; j < recent.length; j++) {
+      var d = recent[j];
+      var date = new Date(d.timestamp * 1000);
+      var col = document.createElement('div');
+      col.className = 'profile-dynamics-col';
+
+      var val = document.createElement('div');
+      val.className = 'profile-dynamics-val';
+      val.textContent = d.count || 0;
+      col.appendChild(val);
+
+      var bar = document.createElement('div');
+      bar.className = 'profile-dynamics-bar';
+      var h = Math.max(4, Math.round(((d.count || 0) / maxCount) * 80));
+      bar.style.height = h + 'px';
+      col.appendChild(bar);
+
+      var lbl = document.createElement('div');
+      lbl.className = 'profile-dynamics-label';
+      var pad = function(n) { return n < 10 ? '0' + n : n; };
+      lbl.textContent = pad(date.getDate()) + '.' + pad(date.getMonth() + 1);
+      col.appendChild(lbl);
+
+      chart.appendChild(col);
+    }
+    section.appendChild(chart);
+
+    content.appendChild(section);
+  },
+
+  renderHistory: function(content, profile) {
+    var history = profile.history;
+    if (!history || history.length === 0) return;
+
+    var section = document.createElement('div');
+    section.className = 'profile-section';
+
+    var divider = document.createElement('div');
+    divider.className = 'details-inner-divider';
+    section.appendChild(divider);
+
+    var title = document.createElement('div');
+    title.className = 'profile-section-title';
+    title.textContent = 'Просмотрено недавно';
+    section.appendChild(title);
+
+    var list = document.createElement('div');
+    list.className = 'profile-list';
+
+    for (var i = 0; i < history.length; i++) {
+      var release = history[i];
+      var ep = release.last_view_episode;
+
+      var row = document.createElement('div');
+      row.className = 'profile-list-row';
+      row.setAttribute('data-focusable', 'true');
+
+      var poster = document.createElement('div');
+      poster.className = 'profile-list-poster';
+      var img = document.createElement('img');
+      img.src = release.image || '';
+      img.alt = '';
+      img.loading = 'lazy';
+      poster.appendChild(img);
+      row.appendChild(poster);
+
+      var info = document.createElement('div');
+      info.className = 'profile-list-info';
+
+      var title2 = document.createElement('div');
+      title2.className = 'profile-list-title';
+      title2.textContent = release.title_ru || release.title || '';
+      info.appendChild(title2);
+
+      var meta = document.createElement('div');
+      meta.className = 'profile-list-date';
+      var metaParts = [];
+      if (ep && ep.name) metaParts.push(ep.name);
+      metaParts.push(this.formatRelativeDate(release.last_view_timestamp));
+      meta.textContent = metaParts.join(' · ');
+      info.appendChild(meta);
+
+      row.appendChild(info);
+
+      row.addEventListener('click', function(rid) {
+        return function() { App.showScreen('details', { releaseId: rid }); };
+      }(release.id));
+
+      list.appendChild(row);
+    }
+
+    section.appendChild(list);
     content.appendChild(section);
   },
 

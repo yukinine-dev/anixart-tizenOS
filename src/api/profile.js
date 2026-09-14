@@ -33,5 +33,12 @@ var ProfileApi = {
 
   removeFavorite: function(releaseId, token) {
     return ApiClient.get('favorite/delete/' + releaseId, { token: token });
+  },
+
+  getVotedReleases: function(profileId, page, token) {
+    return ApiClient.get('profile/vote/release/voted/' + profileId + '/' + page, {
+      token: token,
+      queryParams: { sort: 1 }
+    });
   }
 };
