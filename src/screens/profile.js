@@ -15,8 +15,17 @@ var ProfileScreen = {
 
   render: function(params) {
     params = params || {};
-    var ownId = Storage.getTokenId();
-    this.viewedProfileId = (params.profileId && String(params.profileId) !== String(ownId)) ? params.profileId : null;
+    // Storage.getTokenId() stores profileToken.id from the auth response --
+    // an internal id for the TOKEN record, not the account's own profile id
+    // (they're different numbers). The cached profile's own .id field
+    // (from the login response, or the last /profile/{id} fetch) is the
+    // real account id and the only reliable thing to compare against.
+    var cachedProfile = Storage.getProfile();
+    var ownId = cachedProfile && cachedProfile.id;
+    this.viewedProfileId = null;
+    if (params.profileId && (!ownId || String(params.profileId) !== String(ownId))) {
+      this.viewedProfileId = params.profileId;
+    }
     this.currentTab = 'stats';
 
     var container = document.getElementById('app');
@@ -107,8 +116,11 @@ var ProfileScreen = {
       this.renderProfile(profile, true);
     }
 
-    var tokenId = Storage.getTokenId();
-    if (!tokenId) {
+    // Use the cached profile's own .id (the real account id), never
+    // Storage.getTokenId() -- see the comment in render() above for why
+    // that value is a different, wrong number.
+    var ownProfileId = profile && profile.id;
+    if (!ownProfileId) {
       if (!profile) this.renderProfile({ login: 'Пользователь' }, true);
       return;
     }
@@ -116,7 +128,7 @@ var ProfileScreen = {
     // Always refresh from the network even if a cached profile was already
     // rendered above -- history/votes/watch_dynamics change constantly and
     // the cached copy is only ever the shape saved right after login.
-    ProfileApi.getProfile(tokenId, token).then(function(response) {
+    ProfileApi.getProfile(ownProfileId, token).then(function(response) {
       var prof = response.profile || response;
       self.profileData = prof;
       Storage.setProfile(prof);
