@@ -11,16 +11,21 @@ var ReleaseListScreen = {
     collections: function(page, token) { return ApiClient.get('collection/all/' + page, { token: token }); },
     filtered: function(page, token) {
       return ApiClient.post('filter/' + page, { token: token, json: ReleaseListScreen.filterBody || {} });
+    },
+    'release-collections': function(page, token) {
+      return CollectionApi.getCollectionsForRelease(ReleaseListScreen.releaseId, page, token);
     }
   },
 
   filterBody: null,
+  releaseId: null,
 
   render: function(params) {
     params = params || {};
     this.mode = params.mode || 'watching';
     this.title = params.title || 'Список';
     this.filterBody = params.filterBody || null;
+    this.releaseId = params.releaseId || null;
     this.page = 0;
     this.items = [];
     this.hasMore = true;
@@ -87,7 +92,9 @@ var ReleaseListScreen = {
       self.loading = false;
 
       if (items.length === 0 && self.page === 0) {
-        var emptyText = self.mode === 'filtered' ? 'По этому фильтру ничего не нашлось. Попробуйте изменить условия.' : 'Пусто';
+        var emptyText = 'Пусто';
+        if (self.mode === 'filtered') emptyText = 'По этому фильтру ничего не нашлось. Попробуйте изменить условия.';
+        if (self.mode === 'release-collections') emptyText = 'Этого релиза пока нет ни в одной коллекции.';
         content.innerHTML = '<div class="bookmarks-empty">' + emptyText + '</div>';
         self.hasMore = false;
         return;
@@ -114,7 +121,8 @@ var ReleaseListScreen = {
     grid.className = 'bookmarks-grid';
 
     for (var i = 0; i < this.items.length; i++) {
-      var card = this.mode === 'collections' ? this.createCollectionCard(this.items[i]) : HomeScreen.createReleaseCard(this.items[i]);
+      var isCollectionMode = this.mode === 'collections' || this.mode === 'release-collections';
+      var card = isCollectionMode ? this.createCollectionCard(this.items[i]) : HomeScreen.createReleaseCard(this.items[i]);
       grid.appendChild(card);
     }
 

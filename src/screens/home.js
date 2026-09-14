@@ -22,7 +22,7 @@ var HomeScreen = {
 
   MONTHS: ['янв.', 'февр.', 'мар.', 'апр.', 'май', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'],
 
-  currentTab: 'my',
+  currentTab: 'anime',
   page: 0,
   items: [],
   loading: false,

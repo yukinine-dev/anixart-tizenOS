@@ -144,9 +144,9 @@ var DetailsScreen = {
 
     if (release.profile_list_status) {
       var statusNames = { 1: 'Смотрю', 2: 'В планах', 3: 'Просмотрено', 4: 'Отложено', 5: 'Брошено' };
-      favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg><span>' + (statusNames[release.profile_list_status] || 'Закладка') + '</span>';
+      favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/></svg><span>' + (statusNames[release.profile_list_status] || 'Не смотрю') + '</span>';
     } else {
-      favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+      favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Не смотрю</span>';
     }
 
     favBtn.addEventListener('click', function() {
@@ -456,7 +456,131 @@ var DetailsScreen = {
     this.renderVideoSection(release, scroll);
     this.renderRatingSection(release, scroll);
     this.renderScreenshotsSection(release, scroll);
+    this.renderCollectionActions(release, scroll);
+    this.renderRecommendedSection(release, scroll);
     this.renderCommentsSection(release, scroll);
+  },
+
+  renderCollectionActions: function(release, scroll) {
+    var token = Storage.getToken();
+    var row = document.createElement('div');
+    row.className = 'details-collection-actions';
+
+    var showBtn = document.createElement('button');
+    showBtn.className = 'details-collection-btn';
+    showBtn.setAttribute('data-focusable', 'true');
+    showBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm2 5h12v2H6zm3 5h6v2H9z" fill="currentColor"/></svg><span>Показать в коллекциях</span>' +
+      (release.collection_count ? '<span class="details-collection-count">' + release.collection_count + '</span>' : '');
+    showBtn.addEventListener('click', function() {
+      App.showScreen('release-list', { mode: 'release-collections', title: 'Коллекции', releaseId: release.id });
+    });
+    row.appendChild(showBtn);
+
+    if (token) {
+      var addBtn = document.createElement('button');
+      addBtn.className = 'details-collection-btn';
+      addBtn.setAttribute('data-focusable', 'true');
+      addBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm-1 9h-3v3h-2v-3H8v-2h3V7h2v3h3v2z" fill="currentColor"/></svg><span>Добавить себе в коллекцию</span>';
+      addBtn.addEventListener('click', function() {
+        DetailsScreen.showCollectionPicker(release);
+      });
+      row.appendChild(addBtn);
+    }
+
+    scroll.appendChild(row);
+  },
+
+  showCollectionPicker: function(release) {
+    if (document.getElementById('collection-picker')) return;
+
+    var picker = document.createElement('div');
+    picker.className = 'bookmark-picker';
+    picker.id = 'collection-picker';
+
+    var closeDialog = function() { picker.remove(); };
+    picker.closeDialog = closeDialog;
+
+    var sheet = document.createElement('div');
+    sheet.className = 'bookmark-picker-sheet tab-settings-picker-sheet';
+
+    var title = document.createElement('div');
+    title.className = 'bookmark-picker-title';
+    title.textContent = 'Выбор коллекции';
+    sheet.appendChild(title);
+
+    var list = document.createElement('div');
+    list.className = 'tab-settings-picker-list';
+    list.innerHTML = '<div class="episodes-loading">Загрузка...</div>';
+    sheet.appendChild(list);
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'bookmark-picker-cancel';
+    cancelBtn.setAttribute('data-focusable', 'true');
+    cancelBtn.textContent = 'Отмена';
+    cancelBtn.addEventListener('click', closeDialog);
+    sheet.appendChild(cancelBtn);
+
+    picker.appendChild(sheet);
+    document.getElementById('app').appendChild(picker);
+    setTimeout(function() { FocusManager.setFocus(cancelBtn); }, 50);
+    picker.addEventListener('click', function(e) { if (e.target === picker) closeDialog(); });
+
+    var token = Storage.getToken();
+    var profile = Storage.getProfile();
+    if (!profile) { list.innerHTML = '<div class="episodes-empty">Ошибка</div>'; return; }
+
+    CollectionApi.getUserCollections(profile.id, 0, token).then(function(response) {
+      var collections = response.content || [];
+      list.innerHTML = '';
+
+      if (collections.length === 0) {
+        list.innerHTML = '<div class="episodes-empty">У вас пока нет коллекций</div>';
+        return;
+      }
+
+      for (var i = 0; i < collections.length; i++) {
+        (function(collection) {
+          var btn = document.createElement('button');
+          btn.className = 'bookmark-picker-item';
+          btn.setAttribute('data-focusable', 'true');
+          btn.textContent = collection.title;
+          btn.addEventListener('click', function() {
+            DetailsScreen.addToCollection(release, collection, btn);
+          });
+          list.appendChild(btn);
+        })(collections[i]);
+      }
+
+      setTimeout(function() {
+        var first = list.querySelector('[data-focusable]');
+        if (first) FocusManager.setFocus(first);
+      }, 50);
+    }).catch(function() {
+      list.innerHTML = '<div class="episodes-empty">Ошибка загрузки</div>';
+    });
+  },
+
+  addToCollection: function(release, collection, btn) {
+    var token = Storage.getToken();
+    btn.textContent = collection.title + ' — добавляем...';
+    CollectionApi.addReleaseToCollection(collection.id, release.id, token).then(function() {
+      btn.textContent = collection.title + ' — добавлено';
+      setTimeout(function() {
+        var picker = document.getElementById('collection-picker');
+        if (picker) picker.remove();
+      }, 700);
+    }).catch(function(err) {
+      btn.textContent = collection.title;
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Collection: add release failed', err);
+    });
+  },
+
+  renderRecommendedSection: function(release, scroll) {
+    var items = release.recommended_releases;
+    if (!items || items.length === 0) return;
+
+    var section = HomeScreen.createReleaseSection('Рекомендуем также', null, items, false);
+    scroll.appendChild(section);
   },
 
   renderVideoSection: function(release, scroll) {
@@ -495,16 +619,63 @@ var DetailsScreen = {
       label.textContent = b.name || '';
       inner.appendChild(label);
 
+      var videoId = DetailsScreen.extractYoutubeId(b.image);
+      card.addEventListener('click', function(id, name) {
+        return function() {
+          if (id) DetailsScreen.showVideoPlayer(id, name);
+        };
+      }(videoId, b.name));
+
       row.appendChild(card);
     }
 
     section.appendChild(row);
   },
 
+  // Banners only carry a YouTube thumbnail URL (img.youtube.com/vi/<id>/hqdefault.jpg),
+  // not the video id directly -- pull it out of that URL.
+  extractYoutubeId: function(thumbUrl) {
+    if (!thumbUrl) return null;
+    var m = thumbUrl.match(/\/vi\/([^\/]+)\//);
+    return m ? m[1] : null;
+  },
+
+  showVideoPlayer: function(videoId, title) {
+    if (document.getElementById('video-player-overlay')) return;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'video-player-overlay';
+    overlay.id = 'video-player-overlay';
+
+    var closeDialog = function() { overlay.remove(); };
+    overlay.closeDialog = closeDialog;
+
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'video-player-close';
+    closeBtn.setAttribute('data-focusable', 'true');
+    closeBtn.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="currentColor"/></svg>';
+    closeBtn.addEventListener('click', closeDialog);
+    overlay.appendChild(closeBtn);
+
+    var iframe = document.createElement('iframe');
+    iframe.className = 'video-player-iframe';
+    iframe.setAttribute('frameborder', '0');
+    iframe.setAttribute('allow', 'autoplay');
+    iframe.src = 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) + '?autoplay=1&rel=0&modestbranding=1';
+    overlay.appendChild(iframe);
+
+    document.body.appendChild(overlay);
+    setTimeout(function() { FocusManager.setFocus(closeBtn); }, 50);
+  },
+
   renderRatingSection: function(release, scroll) {
-    if (!release.vote_count) return;
+    var isAnnounced = release.status && release.status.name && release.status.name.toLowerCase() === 'анонс';
+    if (isAnnounced) return;
 
     var section = this.addSection(scroll, 'Рейтинг');
+    var card = document.createElement('div');
+    card.className = 'details-rating-card';
+
     var wrap = document.createElement('div');
     wrap.className = 'rating-wrap';
     wrap.setAttribute('data-focusable', 'true');
@@ -517,7 +688,7 @@ var DetailsScreen = {
     scoreCol.appendChild(scoreVal);
     var scoreCount = document.createElement('div');
     scoreCount.className = 'rating-score-count';
-    scoreCount.textContent = release.vote_count + ' голосов';
+    scoreCount.textContent = (release.vote_count || 0) + ' голосов';
     scoreCol.appendChild(scoreCount);
     wrap.appendChild(scoreCol);
 
@@ -547,7 +718,20 @@ var DetailsScreen = {
     }
     wrap.appendChild(bars);
 
-    section.appendChild(wrap);
+    card.appendChild(wrap);
+
+    var token = Storage.getToken();
+    if (token) {
+      var rateBtn = document.createElement('button');
+      rateBtn.className = 'rating-rate-btn';
+      rateBtn.id = 'rating-rate-btn';
+      rateBtn.setAttribute('data-focusable', 'true');
+      this.renderRateBtn(rateBtn, release.your_vote);
+      rateBtn.addEventListener('click', function() {
+        DetailsScreen.showRatingPicker(release);
+      });
+      card.appendChild(rateBtn);
+    }
 
     var items = [
       { key: 'watching_count', label: 'Смотрю', color: '#73c978' },
@@ -565,49 +749,141 @@ var DetailsScreen = {
         total += val;
       }
     }
-    if (total === 0) return;
 
-    var divider = document.createElement('div');
-    divider.className = 'details-inner-divider';
-    section.appendChild(divider);
+    if (total > 0) {
+      var divider = document.createElement('div');
+      divider.className = 'details-inner-divider';
+      card.appendChild(divider);
 
-    var listsTitle = document.createElement('div');
-    listsTitle.className = 'details-subsection-title';
-    listsTitle.textContent = 'В списках у людей';
-    section.appendChild(listsTitle);
+      var listsTitle = document.createElement('div');
+      listsTitle.className = 'details-subsection-title';
+      listsTitle.textContent = 'В списках у людей';
+      card.appendChild(listsTitle);
 
-    var listsWrap = document.createElement('div');
-    listsWrap.className = 'lists-wrap';
-    listsWrap.setAttribute('data-focusable', 'true');
+      var listsWrap = document.createElement('div');
+      listsWrap.className = 'lists-wrap';
+      listsWrap.setAttribute('data-focusable', 'true');
 
-    var bar = document.createElement('div');
-    bar.className = 'lists-bar';
-    for (var j = 0; j < active.length; j++) {
-      var seg = document.createElement('div');
-      seg.className = 'lists-bar-segment';
-      seg.style.width = ((active[j].value / total) * 100) + '%';
-      seg.style.background = active[j].color;
-      bar.appendChild(seg);
+      var bar = document.createElement('div');
+      bar.className = 'lists-bar';
+      for (var j = 0; j < active.length; j++) {
+        var seg = document.createElement('div');
+        seg.className = 'lists-bar-segment';
+        seg.style.width = ((active[j].value / total) * 100) + '%';
+        seg.style.background = active[j].color;
+        bar.appendChild(seg);
+      }
+      listsWrap.appendChild(bar);
+
+      var legend = document.createElement('div');
+      legend.className = 'lists-legend';
+      for (var k = 0; k < active.length; k++) {
+        var entry = document.createElement('div');
+        entry.className = 'lists-legend-item';
+        var dot = document.createElement('span');
+        dot.className = 'lists-legend-dot';
+        dot.style.background = active[k].color;
+        entry.appendChild(dot);
+        var text = document.createElement('span');
+        text.textContent = active[k].label + ' ' + active[k].value.toLocaleString('ru-RU');
+        entry.appendChild(text);
+        legend.appendChild(entry);
+      }
+      listsWrap.appendChild(legend);
+
+      card.appendChild(listsWrap);
     }
-    listsWrap.appendChild(bar);
 
-    var legend = document.createElement('div');
-    legend.className = 'lists-legend';
-    for (var k = 0; k < active.length; k++) {
-      var entry = document.createElement('div');
-      entry.className = 'lists-legend-item';
-      var dot = document.createElement('span');
-      dot.className = 'lists-legend-dot';
-      dot.style.background = active[k].color;
-      entry.appendChild(dot);
-      var text = document.createElement('span');
-      text.textContent = active[k].label + ' ' + active[k].value.toLocaleString('ru-RU');
-      entry.appendChild(text);
-      legend.appendChild(entry);
+    section.appendChild(card);
+  },
+
+  renderRateBtn: function(btn, yourVote) {
+    btn.innerHTML = yourVote
+      ? '<span>Ваша оценка: ' + yourVote + ' ★</span><span class="rating-rate-btn-edit">изменить</span>'
+      : '<span>Оценить</span>';
+  },
+
+  showRatingPicker: function(release) {
+    if (document.getElementById('rating-picker')) return;
+
+    var picker = document.createElement('div');
+    picker.className = 'bookmark-picker';
+    picker.id = 'rating-picker';
+
+    var closeDialog = function() { picker.remove(); };
+    picker.closeDialog = closeDialog;
+
+    var sheet = document.createElement('div');
+    sheet.className = 'bookmark-picker-sheet rating-picker-sheet';
+
+    var title = document.createElement('div');
+    title.className = 'bookmark-picker-title';
+    title.textContent = 'Оценка';
+    sheet.appendChild(title);
+
+    var stars = document.createElement('div');
+    stars.className = 'rating-picker-stars';
+
+    for (var v = 1; v <= 5; v++) {
+      var starBtn = document.createElement('button');
+      starBtn.className = 'rating-picker-star' + (release.your_vote >= v ? ' filled' : '');
+      starBtn.setAttribute('data-focusable', 'true');
+      starBtn.setAttribute('data-value', v);
+      starBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" fill="currentColor"/></svg>';
+      (function(vote) {
+        starBtn.addEventListener('click', function() {
+          DetailsScreen.submitRating(release, vote);
+        });
+      })(v);
+      stars.appendChild(starBtn);
     }
-    listsWrap.appendChild(legend);
+    sheet.appendChild(stars);
 
-    section.appendChild(listsWrap);
+    if (release.your_vote) {
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'bookmark-picker-remove';
+      removeBtn.setAttribute('data-focusable', 'true');
+      removeBtn.textContent = 'Убрать оценку';
+      removeBtn.addEventListener('click', function() {
+        DetailsScreen.submitRating(release, null);
+      });
+      sheet.appendChild(removeBtn);
+    }
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'bookmark-picker-cancel';
+    cancelBtn.setAttribute('data-focusable', 'true');
+    cancelBtn.textContent = 'Отмена';
+    cancelBtn.addEventListener('click', closeDialog);
+    sheet.appendChild(cancelBtn);
+
+    picker.appendChild(sheet);
+    document.getElementById('app').appendChild(picker);
+
+    setTimeout(function() {
+      var filled = stars.querySelector('.rating-picker-star.filled') || stars.querySelector('[data-focusable]');
+      if (filled) FocusManager.setFocus(filled);
+    }, 50);
+
+    picker.addEventListener('click', function(e) { if (e.target === picker) closeDialog(); });
+  },
+
+  submitRating: function(release, vote) {
+    var token = Storage.getToken();
+    var request = vote
+      ? ReleaseApi.voteAdd(release.id, vote, token)
+      : ReleaseApi.voteDelete(release.id, token);
+
+    request.then(function() {
+      release.your_vote = vote;
+      var btn = document.getElementById('rating-rate-btn');
+      if (btn) DetailsScreen.renderRateBtn(btn, vote);
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Rating: submit failed', err);
+    });
+
+    var picker = document.getElementById('rating-picker');
+    if (picker) picker.remove();
   },
 
   renderScreenshotsSection: function(release, scroll) {
@@ -710,53 +986,420 @@ var DetailsScreen = {
 
   renderCommentsSection: function(release, scroll) {
     var comments = release.comments;
-    if (!comments || comments.length === 0) return;
+    var token = Storage.getToken();
+    var count = release.comments_count || (comments ? comments.length : 0);
 
-    var section = this.addSection(scroll, 'Комментарии (' + (release.comments_count || comments.length) + ')');
-    var list = document.createElement('div');
-    list.className = 'comments-list';
+    var section = this.addSection(scroll, 'Комментарии (' + count + ')');
 
-    for (var i = 0; i < comments.length; i++) {
-      var c = comments[i];
-      var row = document.createElement('div');
-      row.className = 'comment-row';
-      row.setAttribute('data-focusable', 'true');
+    var headerBtns = document.createElement('div');
+    headerBtns.className = 'comments-header-btns';
 
-      var avatar = document.createElement('div');
-      avatar.className = 'comment-avatar';
-      if (c.profile && c.profile.avatar) {
-        var avImg = document.createElement('img');
-        avImg.src = c.profile.avatar;
-        avImg.alt = '';
-        avatar.appendChild(avImg);
-      }
-      row.appendChild(avatar);
-
-      var body = document.createElement('div');
-      body.className = 'comment-body';
-
-      var head = document.createElement('div');
-      head.className = 'comment-head';
-      var name = document.createElement('span');
-      name.className = 'comment-name';
-      name.textContent = (c.profile && c.profile.login) || 'Аноним';
-      head.appendChild(name);
-      var time = document.createElement('span');
-      time.className = 'comment-time';
-      time.textContent = this.formatCommentDate(c.timestamp);
-      head.appendChild(time);
-      body.appendChild(head);
-
-      var message = document.createElement('div');
-      message.className = 'comment-message';
-      message.textContent = c.message || '';
-      body.appendChild(message);
-
-      row.appendChild(body);
-      list.appendChild(row);
+    if (token) {
+      var writeBtn = document.createElement('button');
+      writeBtn.className = 'comments-header-btn';
+      writeBtn.setAttribute('data-focusable', 'true');
+      writeBtn.textContent = 'Написать комментарий';
+      writeBtn.addEventListener('click', function() {
+        DetailsScreen.showCommentEditor(release, null);
+      });
+      headerBtns.appendChild(writeBtn);
     }
 
-    section.appendChild(list);
+    if (count > 0) {
+      var showAllBtn = document.createElement('button');
+      showAllBtn.className = 'comments-header-btn';
+      showAllBtn.setAttribute('data-focusable', 'true');
+      showAllBtn.textContent = 'Показать все';
+      showAllBtn.addEventListener('click', function() {
+        DetailsScreen.showAllComments(release);
+      });
+      headerBtns.appendChild(showAllBtn);
+    }
+
+    section.appendChild(headerBtns);
+
+    if (comments && comments.length > 0) {
+      var list = document.createElement('div');
+      list.className = 'comments-list';
+      for (var i = 0; i < comments.length; i++) {
+        list.appendChild(this.createCommentRow(comments[i], release));
+      }
+      section.appendChild(list);
+    }
+  },
+
+  createCommentRow: function(c, release) {
+    var self = this;
+    var token = Storage.getToken();
+    var myProfile = Storage.getProfile();
+    var isOwn = !!(myProfile && c.profile && c.profile.id === myProfile.id);
+    var isSpoiler = !!(c.is_spoiler || c.isSpoiler);
+    var isDeleted = !!(c.is_deleted || c.isDeleted);
+
+    var row = document.createElement('div');
+    row.className = 'comment-row';
+
+    var avatarBtn = document.createElement('button');
+    avatarBtn.className = 'comment-avatar-btn';
+    avatarBtn.setAttribute('data-focusable', 'true');
+    var avatar = document.createElement('div');
+    avatar.className = 'comment-avatar';
+    if (c.profile && c.profile.avatar) {
+      var avImg = document.createElement('img');
+      avImg.src = c.profile.avatar;
+      avImg.alt = '';
+      avatar.appendChild(avImg);
+    }
+    avatarBtn.appendChild(avatar);
+    avatarBtn.addEventListener('click', function() {
+      if (c.profile && c.profile.id) App.showScreen('profile', { profileId: c.profile.id });
+    });
+    row.appendChild(avatarBtn);
+
+    var body = document.createElement('div');
+    body.className = 'comment-body';
+
+    var head = document.createElement('div');
+    head.className = 'comment-head';
+    var name = document.createElement('span');
+    name.className = 'comment-name';
+    name.textContent = (c.profile && c.profile.login) || 'Аноним';
+    head.appendChild(name);
+    var time = document.createElement('span');
+    time.className = 'comment-time';
+    time.textContent = this.formatCommentDate(c.timestamp);
+    if (c.is_edited || c.isEdited) {
+      time.innerHTML += ' <svg width="13" height="13" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" fill="currentColor"/></svg>';
+    }
+    head.appendChild(time);
+    body.appendChild(head);
+
+    var messageWrap = document.createElement('div');
+    messageWrap.className = 'comment-message-wrap';
+
+    var message = document.createElement('div');
+    message.className = 'comment-message';
+    message.textContent = isDeleted ? 'Комментарий был удалён.' : (c.message || '');
+    messageWrap.appendChild(message);
+
+    var revealed = !isSpoiler;
+    if (isSpoiler && !isDeleted) {
+      var revealBtn = document.createElement('button');
+      revealBtn.className = 'comment-spoiler-cover';
+      revealBtn.setAttribute('data-focusable', 'true');
+      revealBtn.textContent = 'Может содержать спойлер. Нажмите, чтобы прочитать';
+      revealBtn.addEventListener('click', function() {
+        revealBtn.remove();
+        actions.hidden = false;
+      });
+      messageWrap.appendChild(revealBtn);
+    }
+    body.appendChild(messageWrap);
+
+    var actions = document.createElement('div');
+    actions.className = 'comment-actions';
+    actions.hidden = isSpoiler && !isDeleted;
+
+    if (!isDeleted) {
+      var dislikeBtn = document.createElement('button');
+      dislikeBtn.className = 'comment-vote-btn' + (c.vote === 1 ? ' active-dislike' : '');
+      dislikeBtn.setAttribute('data-focusable', 'true');
+      dislikeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z" fill="currentColor"/></svg>';
+      dislikeBtn.addEventListener('click', function() { self.voteOnComment(c, 1, likeCount, dislikeBtn, likeBtn); });
+      actions.appendChild(dislikeBtn);
+
+      var likeCount = document.createElement('span');
+      likeCount.className = 'comment-vote-count';
+      likeCount.textContent = c.likes_count || c.vote_count || 0;
+      actions.appendChild(likeCount);
+
+      var likeBtn = document.createElement('button');
+      likeBtn.className = 'comment-vote-btn' + (c.vote === 2 ? ' active-like' : '');
+      likeBtn.setAttribute('data-focusable', 'true');
+      likeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M9 21h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2zM1 9v12h4V9H1z" fill="currentColor"/></svg>';
+      likeBtn.addEventListener('click', function() { self.voteOnComment(c, 2, likeCount, dislikeBtn, likeBtn); });
+      actions.appendChild(likeBtn);
+
+      if (token) {
+        var replyBtn = document.createElement('button');
+        replyBtn.className = 'comment-action-btn';
+        replyBtn.setAttribute('data-focusable', 'true');
+        replyBtn.textContent = 'Ответить';
+        replyBtn.addEventListener('click', function() {
+          self.showCommentEditor(release, c);
+        });
+        actions.appendChild(replyBtn);
+      }
+
+      if (isOwn) {
+        var editBtn = document.createElement('button');
+        editBtn.className = 'comment-action-btn';
+        editBtn.setAttribute('data-focusable', 'true');
+        editBtn.textContent = 'Изменить';
+        editBtn.addEventListener('click', function() {
+          self.showCommentEditor(release, null, c);
+        });
+        actions.appendChild(editBtn);
+
+        var deleteBtn = document.createElement('button');
+        deleteBtn.className = 'comment-action-btn comment-action-delete';
+        deleteBtn.setAttribute('data-focusable', 'true');
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.addEventListener('click', function() {
+          self.deleteComment(c, row);
+        });
+        actions.appendChild(deleteBtn);
+      }
+    }
+
+    body.appendChild(actions);
+
+    if (!isDeleted && !isSpoiler && c.reply_count > 0) {
+      var repliesWrap = document.createElement('div');
+      repliesWrap.className = 'comment-replies';
+      repliesWrap.hidden = true;
+      body.appendChild(repliesWrap);
+
+      var repliesToggle = document.createElement('button');
+      repliesToggle.className = 'comment-action-btn';
+      repliesToggle.setAttribute('data-focusable', 'true');
+      repliesToggle.textContent = 'Ответы (' + c.reply_count + ')';
+      var repliesLoaded = false;
+      repliesToggle.addEventListener('click', function() {
+        if (!repliesLoaded) {
+          var token2 = Storage.getToken();
+          ReleaseApi.getCommentReplies(c.id, token2).then(function(response) {
+            var replies = response.content || [];
+            for (var r = 0; r < replies.length; r++) {
+              repliesWrap.appendChild(self.createCommentRow(replies[r], release));
+            }
+            repliesLoaded = true;
+          }).catch(function() {});
+        }
+        repliesWrap.hidden = !repliesWrap.hidden;
+        repliesToggle.textContent = (repliesWrap.hidden ? 'Ответы (' : 'Скрыть ответы (') + c.reply_count + ')';
+      });
+      actions.appendChild(repliesToggle);
+    }
+
+    row.appendChild(body);
+    return row;
+  },
+
+  voteOnComment: function(comment, action, likeCountEl, dislikeBtn, likeBtn) {
+    var token = Storage.getToken();
+    if (!token) return;
+
+    var wasVote = comment.vote || 0;
+    var newVote, delta;
+    if (action === 2) {
+      if (wasVote === 2) { newVote = 0; delta = -1; }
+      else if (wasVote === 1) { newVote = 2; delta = 2; }
+      else { newVote = 2; delta = 1; }
+    } else {
+      if (wasVote === 1) { newVote = 0; delta = 1; }
+      else if (wasVote === 2) { newVote = 1; delta = -2; }
+      else { newVote = 1; delta = -1; }
+    }
+
+    comment.vote = newVote;
+    comment.likes_count = (comment.likes_count || 0) + delta;
+    likeCountEl.textContent = comment.likes_count;
+    dislikeBtn.classList.toggle('active-dislike', newVote === 1);
+    likeBtn.classList.toggle('active-like', newVote === 2);
+
+    ReleaseApi.voteComment(comment.id, action, token).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Comment: vote failed', err);
+    });
+  },
+
+  deleteComment: function(comment, row) {
+    var token = Storage.getToken();
+    if (!token) return;
+    ReleaseApi.deleteComment(comment.id, token).then(function() {
+      row.remove();
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Comment: delete failed', err);
+    });
+  },
+
+  showCommentEditor: function(release, parentComment, editingComment) {
+    if (document.getElementById('comment-editor')) return;
+
+    var isEdit = !!editingComment;
+    var isReply = !!parentComment;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'bookmark-picker';
+    overlay.id = 'comment-editor';
+
+    var closeDialog = function() { overlay.remove(); };
+    overlay.closeDialog = closeDialog;
+
+    var sheet = document.createElement('div');
+    sheet.className = 'bookmark-picker-sheet comment-editor-sheet';
+
+    var title = document.createElement('div');
+    title.className = 'bookmark-picker-title';
+    title.textContent = isEdit ? 'Редактировать комментарий' : (isReply ? 'Ответ на комментарий' : 'Новый комментарий');
+    sheet.appendChild(title);
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'comment-editor-input';
+    input.setAttribute('data-focusable', 'true');
+    input.placeholder = 'Написать комментарий...';
+    if (isEdit) {
+      input.value = editingComment.message || '';
+    } else if (isReply && parentComment.profile) {
+      input.value = parentComment.profile.login + ', ';
+    }
+    sheet.appendChild(input);
+
+    var spoilerRow = document.createElement('button');
+    spoilerRow.className = 'bookmark-picker-item comment-editor-spoiler-row';
+    spoilerRow.setAttribute('data-focusable', 'true');
+    var checkbox = document.createElement('span');
+    checkbox.className = 'bookmark-picker-checkbox';
+    spoilerRow.appendChild(checkbox);
+    var checkboxLabel = document.createElement('span');
+    checkboxLabel.textContent = 'Спойлер';
+    spoilerRow.appendChild(checkboxLabel);
+    var isSpoiler = isEdit && !!(editingComment.is_spoiler || editingComment.isSpoiler);
+    if (isSpoiler) spoilerRow.classList.add('active');
+    spoilerRow.addEventListener('click', function() {
+      isSpoiler = !isSpoiler;
+      spoilerRow.classList.toggle('active', isSpoiler);
+    });
+    sheet.appendChild(spoilerRow);
+
+    var sendBtn = document.createElement('button');
+    sendBtn.className = 'bookmark-picker-cancel comment-editor-send';
+    sendBtn.setAttribute('data-focusable', 'true');
+    sendBtn.textContent = isEdit ? 'Изменить' : 'Отправить';
+    sendBtn.addEventListener('click', function() {
+      var message = input.value.trim();
+      if (!message) return;
+      DetailsScreen.submitComment(release, parentComment, editingComment, message, isSpoiler);
+    });
+    sheet.appendChild(sendBtn);
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.className = 'bookmark-picker-cancel';
+    cancelBtn.setAttribute('data-focusable', 'true');
+    cancelBtn.textContent = 'Отмена';
+    cancelBtn.addEventListener('click', closeDialog);
+    sheet.appendChild(cancelBtn);
+
+    overlay.appendChild(sheet);
+    document.getElementById('app').appendChild(overlay);
+
+    setTimeout(function() { FocusManager.setFocus(input); }, 50);
+  },
+
+  submitComment: function(release, parentComment, editingComment, message, isSpoiler) {
+    var token = Storage.getToken();
+    if (!token) return;
+
+    var request = editingComment
+      ? ReleaseApi.editComment(editingComment.id, message, isSpoiler, token)
+      : ReleaseApi.addComment(release.id, message, parentComment ? parentComment.id : null, parentComment && parentComment.profile ? parentComment.profile.id : null, isSpoiler, token);
+
+    request.then(function() {
+      var editor = document.getElementById('comment-editor');
+      if (editor) editor.remove();
+      // Reloading the release rebuilds #app from scratch, which takes the
+      // (in-#app) comment editor with it -- but the full-comments overlay
+      // lives on document.body, so it has to be closed explicitly or it
+      // would keep showing stale data over the freshly reloaded page.
+      var allOverlay = document.getElementById('all-comments-overlay');
+      if (allOverlay) allOverlay.remove();
+      DetailsScreen.loadRelease(release.id);
+    }).catch(function(err) {
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Comment: submit failed', err);
+    });
+  },
+
+  showAllComments: function(release) {
+    if (document.getElementById('all-comments-overlay')) return;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'voiceover-picker';
+    overlay.id = 'all-comments-overlay';
+
+    var closeDialog = function() { overlay.remove(); };
+    overlay.closeDialog = closeDialog;
+
+    var header = document.createElement('div');
+    header.className = 'voiceover-picker-header';
+    var backBtn = document.createElement('button');
+    backBtn.className = 'voiceover-picker-back';
+    backBtn.setAttribute('data-focusable', 'true');
+    backBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>';
+    backBtn.addEventListener('click', closeDialog);
+    header.appendChild(backBtn);
+    var headerTitle = document.createElement('div');
+    headerTitle.className = 'voiceover-picker-title';
+    headerTitle.textContent = 'Все комментарии';
+    header.appendChild(headerTitle);
+    overlay.appendChild(header);
+
+    var list = document.createElement('div');
+    list.className = 'voiceover-list voiceover-list-fullscreen all-comments-list';
+    list.id = 'all-comments-list';
+    list.innerHTML = '<div class="episodes-loading">Загрузка...</div>';
+    overlay.appendChild(list);
+
+    document.body.appendChild(overlay);
+    setTimeout(function() { FocusManager.setFocus(backBtn); }, 50);
+
+    this.allCommentsPage = 0;
+    this.allCommentsLoading = false;
+    this.allCommentsHasMore = true;
+    this.loadAllCommentsPage(release, true);
+
+    list.addEventListener('scroll', function() {
+      if (list.scrollTop + list.clientHeight >= list.scrollHeight - 300) {
+        DetailsScreen.loadAllCommentsPage(release, false);
+      }
+    });
+  },
+
+  loadAllCommentsPage: function(release, isFirst) {
+    if (this.allCommentsLoading || !this.allCommentsHasMore) return;
+    this.allCommentsLoading = true;
+
+    var token = Storage.getToken();
+    var self = this;
+    var list = document.getElementById('all-comments-list');
+
+    ReleaseApi.getComments(release.id, this.allCommentsPage, token).then(function(response) {
+      self.allCommentsLoading = false;
+      var items = response.content || [];
+      if (isFirst) list.innerHTML = '';
+
+      if (items.length === 0) {
+        self.allCommentsHasMore = false;
+        if (isFirst) list.innerHTML = '<div class="episodes-empty">Комментариев нет</div>';
+        return;
+      }
+
+      for (var i = 0; i < items.length; i++) {
+        list.appendChild(self.createCommentRow(items[i], release));
+      }
+      self.allCommentsPage++;
+
+      if (isFirst) {
+        setTimeout(function() {
+          var first = list.querySelector('[data-focusable]');
+          if (first) FocusManager.setFocus(first);
+        }, 50);
+      }
+    }).catch(function(err) {
+      self.allCommentsLoading = false;
+      if (typeof Debug !== 'undefined') Debug.log('error', 'Comments: load failed', err);
+      if (isFirst) list.innerHTML = '<div class="episodes-empty">Ошибка загрузки</div>';
+    });
   },
 
   showShareDialog: function(release) {
@@ -918,7 +1561,7 @@ var DetailsScreen = {
 
       var favBtn = document.getElementById('details-fav-btn');
       if (favBtn) {
-        favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Закладка</span>';
+        favBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Не смотрю</span>';
       }
     }).catch(function(err) {
       if (typeof Debug !== 'undefined') Debug.log('error', 'Bookmark: remove failed', err);
